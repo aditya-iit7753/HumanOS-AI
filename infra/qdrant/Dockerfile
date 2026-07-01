@@ -1,0 +1,4 @@
+FROM qdrant/qdrant:v1.12.4
+
+EXPOSE 6333
+EXPOSE 6334

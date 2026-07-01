@@ -1,0 +1,20 @@
+{
+    "name":  "humanos-ai",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "docker compose up --build",
+                    "compose:up":  "docker compose up --build",
+                    "compose:down":  "docker compose down",
+                    "install:all":  "npm --prefix apps/web install",
+                    "web:install":  "npm --prefix apps/web install",
+                    "web:dev":  "npm --prefix apps/web run dev",
+                    "web:build":  "npm --prefix apps/web run build",
+                    "web:typecheck":  "npm --prefix apps/web run typecheck",
+                    "api:install":  "python -m pip install -r apps/api/requirements.txt",
+                    "api:dev":  "cd apps/api \u0026\u0026 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+                    "api:start":  "cd apps/api \u0026\u0026 uvicorn app.main:app --host 0.0.0.0 --port 8000",
+                    "api:check":  "python -m compileall apps/api/app apps/api/alembic",
+                    "typecheck":  "npm --prefix apps/web run typecheck",
+                    "build":  "npm --prefix apps/web run build"
+                }
+}

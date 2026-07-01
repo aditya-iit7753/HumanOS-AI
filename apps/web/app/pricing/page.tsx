@@ -1,0 +1,170 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
+import { ArrowRight, Check, ChevronLeft, Loader2, LockKeyhole, Moon, Sparkles, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+type PlanId = "free" | "pro" | "premium" | "enterprise";
+
+const plans: Array<{
+  id: PlanId;
+  name: string;
+  price: string;
+  period: string;
+  copy: string;
+  cta: string;
+  featured: boolean;
+  limits: Record<(typeof rows)[number][1], string>;
+}> = [
+  {
+    id: "free",
+    name: "Free",
+    price: "?0",
+    period: "/month",
+    copy: "Start with the HumanOS basics.",
+    cta: "Start free",
+    featured: false,
+    limits: { chat: "50 messages / month", memory: "25 saved memories", documents: "3 uploads / month", agents: "Research + Study preview", career: "Basic roadmap only" },
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: "?499",
+    period: "/month",
+    copy: "For serious personal execution.",
+    cta: "Upgrade to Pro",
+    featured: true,
+    limits: { chat: "1,000 messages / month", memory: "500 saved memories", documents: "50 uploads / month", agents: "All standard agents", career: "Full Career Copilot" },
+  },
+  {
+    id: "premium",
+    name: "Premium",
+    price: "?999",
+    period: "/month",
+    copy: "For power users and heavy document workflows.",
+    cta: "Upgrade to Premium",
+    featured: false,
+    limits: { chat: "Unlimited fair use", memory: "Unlimited memories", documents: "250 uploads / month", agents: "All agents + priority runs", career: "Advanced ATS + interview prep" },
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: "Custom",
+    period: "",
+    copy: "For managed teams, cohorts, and institutions.",
+    cta: "Contact sales",
+    featured: false,
+    limits: { chat: "Custom limits", memory: "Workspace memory controls", documents: "Custom storage policy", agents: "Custom agent workflows", career: "Team career programs" },
+  },
+];
+
+const rows = [
+  ["Chat limit", "chat"],
+  ["Memory limit", "memory"],
+  ["Document upload limit", "documents"],
+  ["Agent access", "agents"],
+  ["Career Copilot access", "career"],
+] as const;
+
+export default function PricingPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const { getToken, isSignedIn } = useAuth();
+  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  const [error, setError] = useState("");
+
+  async function startCheckout(plan: PlanId) {
+    setError("");
+    if (plan === "free") {
+      window.location.href = isSignedIn ? "/dashboard" : "/sign-up";
+      return;
+    }
+    if (plan === "enterprise") {
+      window.location.href = "mailto:sales@humanos.ai?subject=HumanOS%20AI%20Enterprise";
+      return;
+    }
+    const token = await getToken();
+    if (!token) {
+      window.location.href = `/sign-up?redirect_url=${encodeURIComponent("/pricing")}`;
+      return;
+    }
+    setLoadingPlan(plan);
+    try {
+      const response = await fetch(`${API_URL}/billing/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({ detail: "Unable to start checkout" }));
+        throw new Error(body.detail ?? "Unable to start checkout");
+      }
+      const data = (await response.json()) as { url: string };
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to start checkout");
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b bg-background/75 backdrop-blur-2xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <Button asChild variant="ghost" size="sm"><Link href="/"><ChevronLeft className="h-4 w-4" />Home</Link></Button>
+          <div className="flex items-center gap-2 font-semibold"><span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Sparkles className="h-4 w-4" /></span>HumanOS AI Pricing</div>
+          <Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+        </div>
+      </header>
+
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="text-sm font-semibold text-primary">Pricing</p>
+          <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Simple plans for your personal AI operating system.</h1>
+          <p className="mt-5 text-lg leading-8 text-muted-foreground">Upgrade as your chat, memory, documents, agents, and career workflows grow.</p>
+          {error && <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+        </div>
+
+        <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} loading={loadingPlan === plan.id} onSelect={() => void startCheckout(plan.id)} />)}
+        </div>
+
+        <Card className="mx-auto mt-8 max-w-7xl bg-card/70 backdrop-blur-2xl">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><LockKeyhole className="h-5 w-5 text-primary" /> Feature limits enforced at checkout and API level</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
+              <thead><tr>{["Feature", ...plans.map((plan) => plan.name)].map((head) => <th key={head} className="border-b px-4 py-3 text-left font-semibold">{head}</th>)}</tr></thead>
+              <tbody>{rows.map(([label, key]) => <tr key={key}>{[label, ...plans.map((plan) => plan.limits[key])].map((cell, index) => <td key={`${key}-${index}`} className="border-b px-4 py-3 text-muted-foreground first:text-foreground first:font-medium">{cell}</td>)}</tr>)}</tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </section>
+    </main>
+  );
+}
+
+function PlanCard({ plan, loading, onSelect }: { plan: (typeof plans)[number]; loading: boolean; onSelect: () => void }) {
+  return (
+    <Card className={cn("flex h-full flex-col bg-card/70 backdrop-blur-2xl", plan.featured && "border-primary bg-primary/10 ring-1 ring-primary/30")}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3"><CardTitle>{plan.name}</CardTitle>{plan.featured && <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">Best value</span>}</div>
+        <p className="text-sm leading-6 text-muted-foreground">{plan.copy}</p>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col">
+        <p className="text-4xl font-semibold">{plan.price}<span className="text-base font-normal text-muted-foreground">{plan.period}</span></p>
+        <div className="mt-6 flex-1 space-y-3">
+          {rows.map(([label, key]) => <p key={key} className="flex items-start gap-2 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-secondary" /><span><span className="font-medium">{label}:</span> {plan.limits[key]}</span></p>)}
+        </div>
+        <Button type="button" className="mt-6" variant={plan.featured ? "default" : "outline"} onClick={onSelect} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{plan.cta}</Button>
+      </CardContent>
+    </Card>
+  );
+}
