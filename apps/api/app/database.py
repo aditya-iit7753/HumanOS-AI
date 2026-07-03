@@ -10,8 +10,16 @@ class Base(DeclarativeBase):
     pass
 
 
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgres://")
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+
 settings = get_settings()
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+engine = create_engine(normalize_database_url(settings.database_url), pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -21,4 +29,3 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
-

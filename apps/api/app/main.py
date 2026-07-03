@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta, timezone
+import logging
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
@@ -44,6 +45,7 @@ from app.security import create_access_token, get_current_user, hash_password, v
 from app.security_clerk import get_clerk_subject, get_current_clerk_user
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name, version="1.0.0")
 
 app.add_middleware(
@@ -58,24 +60,26 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_user_id VARCHAR(128)"))
-        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_clerk_user_id ON users (clerk_user_id)"))
-        connection.execute(text("ALTER TABLE memories ADD COLUMN IF NOT EXISTS vector_id VARCHAR(80)"))
-        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_memories_vector_id ON memories (vector_id)"))
-        connection.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS goal_id UUID"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_goal_id ON tasks (goal_id)"))
-        connection.execute(text("ALTER TABLE tasks ALTER COLUMN priority TYPE VARCHAR(16) USING CASE WHEN priority::text IN ('1', 'low') THEN 'low' WHEN priority::text IN ('3', '4', '5', 'high') THEN 'high' ELSE 'medium' END"))
-        connection.execute(text("ALTER TABLE tasks ALTER COLUMN priority SET DEFAULT 'medium'"))
-        connection.execute(text("DO $$ BEGIN ALTER TABLE tasks ADD CONSTRAINT fk_tasks_goal_id_goals FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"))
-        connection.execute(text("CREATE TABLE IF NOT EXISTS goal_milestones (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE, title VARCHAR(220) NOT NULL, description TEXT NOT NULL DEFAULT '', target_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, sort_order INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_goal_milestones_user_id ON goal_milestones (user_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_goal_milestones_goal_id ON goal_milestones (goal_id)"))
-        connection.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS extracted_text TEXT NOT NULL DEFAULT ''"))
-        connection.execute(text("CREATE TABLE IF NOT EXISTS user_settings (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, ai_preferences JSONB NOT NULL DEFAULT '{}'::jsonb, memory_enabled BOOLEAN NOT NULL DEFAULT true, theme VARCHAR(24) NOT NULL DEFAULT 'system', dev_api_keys JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
-        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_user_settings_user_id ON user_settings (user_id)"))
-
+    try:
+        Base.metadata.create_all(bind=engine)
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_user_id VARCHAR(128)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_clerk_user_id ON users (clerk_user_id)"))
+            connection.execute(text("ALTER TABLE memories ADD COLUMN IF NOT EXISTS vector_id VARCHAR(80)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_memories_vector_id ON memories (vector_id)"))
+            connection.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS goal_id UUID"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_goal_id ON tasks (goal_id)"))
+            connection.execute(text("ALTER TABLE tasks ALTER COLUMN priority TYPE VARCHAR(16) USING CASE WHEN priority::text IN ('1', 'low') THEN 'low' WHEN priority::text IN ('3', '4', '5', 'high') THEN 'high' ELSE 'medium' END"))
+            connection.execute(text("ALTER TABLE tasks ALTER COLUMN priority SET DEFAULT 'medium'"))
+            connection.execute(text("DO $$ BEGIN ALTER TABLE tasks ADD CONSTRAINT fk_tasks_goal_id_goals FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"))
+            connection.execute(text("CREATE TABLE IF NOT EXISTS goal_milestones (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE, title VARCHAR(220) NOT NULL, description TEXT NOT NULL DEFAULT '', target_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, sort_order INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_goal_milestones_user_id ON goal_milestones (user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_goal_milestones_goal_id ON goal_milestones (goal_id)"))
+            connection.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS extracted_text TEXT NOT NULL DEFAULT ''"))
+            connection.execute(text("CREATE TABLE IF NOT EXISTS user_settings (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, ai_preferences JSONB NOT NULL DEFAULT '{}'::jsonb, memory_enabled BOOLEAN NOT NULL DEFAULT true, theme VARCHAR(24) NOT NULL DEFAULT 'system', dev_api_keys JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_user_settings_user_id ON user_settings (user_id)"))
+    except Exception as exc:
+        logger.exception("Database startup setup failed; healthcheck remains available: %s", exc)
 
 def _get_or_create_settings(user: User, db: Session) -> UserSettings:
     settings_row = db.scalar(select(UserSettings).where(UserSettings.user_id == user.id))
