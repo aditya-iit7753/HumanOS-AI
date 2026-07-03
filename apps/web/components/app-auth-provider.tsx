@@ -1,23 +1,17 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 
-function hasUsableClerkKey() {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  return Boolean(key && key.startsWith("pk_") && !key.includes("replace_me") && !key.includes("placeholder"));
-}
+import { ClerkAuthBridge, FallbackAuthProvider } from "@/components/clerk-safe";
+import { clerkIsConfigured } from "@/lib/clerk-config";
 
 export function AppAuthProvider({ children }: { children: ReactNode }) {
-  if (!hasUsableClerkKey()) {
-    return <>{children}</>;
+  if (!clerkIsConfigured()) {
+    return <FallbackAuthProvider>{children}</FallbackAuthProvider>;
   }
 
   return (
     <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/">
-      {children}
+      <ClerkAuthBridge>{children}</ClerkAuthBridge>
     </ClerkProvider>
   );
-}
-
-export function clerkIsConfigured() {
-  return hasUsableClerkKey();
 }

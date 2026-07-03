@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
   AlertCircle,
@@ -171,7 +171,7 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
   const [stats, setStats] = useState<DashboardStats>({ memories: 0, goals: 0, documents: 0, agents: 0, plannerScore: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
 
 
@@ -379,7 +379,7 @@ function TopBar({
           <Button asChild variant="outline" className="hidden sm:inline-flex">
             <Link href="/settings"><SettingsIcon className="h-4 w-4" />Settings</Link>
           </Button>
-          {clerkReady ? <UserButton /> : <Button asChild><Link href="/sign-in">Login</Link></Button>}
+          {clerkReady ? <SafeUserButton /> : <Button asChild><Link href="/sign-in">Login</Link></Button>}
         </div>
       </div>
     </header>
@@ -506,6 +506,7 @@ function TaskSummaryPanel({ summary, isLoading }: { summary: { open: number; don
     </Card>
   );
 }
+
 
 
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import { ArrowLeft, CalendarDays, Check, Flag, Goal, Loader2, Moon, Plus, Sparkles, Sun, Trash2, WandSparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -28,7 +28,7 @@ export function GoalsClient({ user, clerkReady }: { user: GoalUser; clerkReady: 
 }
 
 function AuthenticatedGoalsClient({ user }: { user: GoalUser }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [milestones, setMilestones] = useState<Record<string, Milestone[]>>({});
@@ -125,7 +125,7 @@ function AuthenticatedGoalsClient({ user }: { user: GoalUser }) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b bg-background/75 backdrop-blur-2xl"><div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"><div className="flex items-center gap-3"><Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex"><Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Dashboard</Link></Button><div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Goal className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Goal tracking</p><p className="text-xs text-muted-foreground">Long-term roadmap for {user.firstName}</p></div></div><div className="flex gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><UserButton /></div></div></header>
+      <header className="sticky top-0 z-30 border-b bg-background/75 backdrop-blur-2xl"><div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"><div className="flex items-center gap-3"><Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex"><Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Dashboard</Link></Button><div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><Goal className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Goal tracking</p><p className="text-xs text-muted-foreground">Long-term roadmap for {user.firstName}</p></div></div><div className="flex gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><SafeUserButton /></div></div></header>
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[380px_1fr] lg:px-8">
         <aside className="space-y-4">
           <Card className="bg-card/70 backdrop-blur-2xl"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-primary" />Create goal</CardTitle></CardHeader><CardContent><form onSubmit={createGoal} className="space-y-3"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Long-term goal" /><Textarea value={form.why} onChange={(event) => setForm({ ...form, why: event.target.value })} placeholder="Why this matters" /><Input value={form.metric} onChange={(event) => setForm({ ...form, metric: event.target.value })} placeholder="Success metric" /><Input type="date" value={form.target_at} onChange={(event) => setForm({ ...form, target_at: event.target.value })} /><Button className="w-full" disabled={!form.title.trim() || isSaving}>{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create goal</Button></form></CardContent></Card>
@@ -153,3 +153,4 @@ function MilestoneRow({ milestone, index, onComplete, onTask }: { milestone: Mil
 function Progress({ value }: { value: number }) { return <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div>; }
 function Metric({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) { return <div className="rounded-lg border bg-background/65 p-3 text-center"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}{suffix}</p></div>; }
 function GoalsSetup({ user }: { user: GoalUser }) { const { resolvedTheme, setTheme } = useTheme(); return <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground"><div className="absolute right-4 top-4 flex gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><Button asChild><Link href="/sign-in">Login</Link></Button></div><section className="mx-auto max-w-2xl rounded-[1.5rem] border bg-card/70 p-8 text-center shadow-soft backdrop-blur-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Goal className="h-7 w-7" /></div><h1 className="mt-5 text-3xl font-semibold">Goals are ready, {user.firstName}.</h1><p className="mt-3 text-muted-foreground">Add Clerk keys to enable authenticated goal tracking.</p></section></main>; }
+

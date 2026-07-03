@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
   ArrowUp,
@@ -61,7 +61,7 @@ export function ChatClient({ user, clerkReady }: { user: ChatUser; clerkReady: b
 }
 
 function AuthenticatedChatClient({ user }: { user: ChatUser }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -255,7 +255,7 @@ function AuthenticatedChatClient({ user }: { user: ChatUser }) {
             <Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
               {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <UserButton />
+            <SafeUserButton />
           </div>
         </header>
 
@@ -470,4 +470,5 @@ function ChatPreview({ user }: { user: ChatUser }) {
     </main>
   );
 }
+
 

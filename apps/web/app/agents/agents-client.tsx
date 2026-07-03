@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import { Bot, BriefcaseBusiness, CheckCircle2, ChevronLeft, FileText, GraduationCap, Loader2, Moon, Search, Sparkles, Sun, TimerReset, Zap } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -38,7 +38,7 @@ export function AgentsClient({ user, clerkReady, activeAgentType }: { user: AppU
 }
 
 function AuthenticatedAgents({ user, initialAgentType }: { user: AppUser; initialAgentType: AgentType }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [activeAgentType, setActiveAgentType] = useState<AgentType>(initialAgentType);
@@ -288,7 +288,7 @@ function AuthenticatedAgents({ user, initialAgentType }: { user: AppUser; initia
             <Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
               {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <UserButton />
+            <SafeUserButton />
           </div>
         </div>
       </header>
@@ -763,3 +763,4 @@ function Metric({ label, value }: { label: string; value: string }) {
 function AgentsPreview({ user }: { user: AppUser }) {
   return <main className="min-h-screen bg-background px-4 py-8 text-foreground"><div className="mx-auto max-w-3xl rounded-[1.5rem] border bg-card/70 p-8 shadow-soft backdrop-blur-2xl"><p className="flex items-center gap-2 text-sm font-semibold text-primary"><Bot className="h-4 w-4" /> HumanOS Agents</p><h1 className="mt-4 text-3xl font-semibold">Welcome, {user.firstName}</h1><p className="mt-3 text-sm leading-7 text-muted-foreground">Connect Clerk to run specialized agents that use your memories, documents, tasks, and goals.</p><Button asChild className="mt-6"><Link href="/sign-in">Sign in</Link></Button></div></main>;
 }
+

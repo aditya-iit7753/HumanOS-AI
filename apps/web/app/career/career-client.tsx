@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
   ArrowLeft,
@@ -63,7 +63,7 @@ export function CareerClient({ user, clerkReady }: { user: CareerUser; clerkRead
 }
 
 function AuthenticatedCareerClient({ user }: { user: CareerUser }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [activeTool, setActiveTool] = useState<ToolId>("resume_builder");
   const [targetRole, setTargetRole] = useState<(typeof roleVersions)[number]>("AI/ML Engineer");
@@ -162,7 +162,7 @@ function AuthenticatedCareerClient({ user }: { user: CareerUser }) {
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><BriefcaseBusiness className="h-5 w-5" /></div>
             <div><p className="text-sm font-semibold">Career Copilot</p><p className="text-xs text-muted-foreground">ATS resume builder and career tools</p></div>
           </div>
-          <div className="flex gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><UserButton /></div>
+          <div className="flex gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><SafeUserButton /></div>
         </div>
       </header>
 

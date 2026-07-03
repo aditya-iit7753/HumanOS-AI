@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useSafeAuth } from "@/components/clerk-safe";
 import { ArrowRight, Check, ChevronLeft, Loader2, LockKeyhole, Moon, Sparkles, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -76,7 +76,7 @@ const rows = [
 
 export default function PricingPage() {
   const { resolvedTheme, setTheme } = useTheme();
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn } = useSafeAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState("");
 
@@ -168,3 +168,4 @@ function PlanCard({ plan, loading, onSelect }: { plan: (typeof plans)[number]; l
     </Card>
   );
 }
+

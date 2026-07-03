@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import { ArrowDownToLine, ChevronLeft, CreditCard, KeyRound, Loader2, Moon, Save, Settings, ShieldAlert, Sparkles, Sun, Trash2, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
@@ -32,7 +32,7 @@ export function SettingsClient({ user, clerkReady }: { user: AppUser; clerkReady
 }
 
 function AuthenticatedSettings({ fallbackUser }: { fallbackUser: AppUser }) {
-  const { getToken, signOut } = useAuth();
+  const { getToken, signOut } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionPayload | null>(null);
@@ -190,7 +190,7 @@ function AuthenticatedSettings({ fallbackUser }: { fallbackUser: AppUser }) {
             <Button asChild variant="ghost" size="sm"><Link href="/dashboard"><ChevronLeft className="h-4 w-4" />Dashboard</Link></Button>
             <div className="min-w-0"><p className="truncate text-sm font-semibold">Settings</p><p className="text-xs text-muted-foreground">Profile, AI, memory, theme, data, and development keys</p></div>
           </div>
-          <div className="flex items-center gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><UserButton /></div>
+          <div className="flex items-center gap-2"><Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button><SafeUserButton /></div>
         </div>
       </header>
 
@@ -217,3 +217,4 @@ function AuthenticatedSettings({ fallbackUser }: { fallbackUser: AppUser }) {
 function SettingsPreview({ user }: { user: AppUser }) {
   return <main className="min-h-screen bg-background px-4 py-8 text-foreground"><div className="mx-auto max-w-3xl rounded-[1.5rem] border bg-card/70 p-8 shadow-soft backdrop-blur-2xl"><p className="flex items-center gap-2 text-sm font-semibold text-primary"><Settings className="h-4 w-4" /> Settings</p><h1 className="mt-4 text-3xl font-semibold">Welcome, {user.firstName}</h1><p className="mt-3 text-sm leading-7 text-muted-foreground">Connect Clerk to manage HumanOS settings.</p><Button asChild className="mt-6"><Link href="/sign-in">Sign in</Link></Button></div></main>;
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
   ArrowRight,
@@ -72,7 +72,7 @@ export function DocumentsClient({ user, clerkReady }: { user: AppUser; clerkRead
 }
 
 function AuthenticatedDocumentsClient({ user }: { user: AppUser }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [documents, setDocuments] = useState<HumanDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
@@ -241,7 +241,7 @@ function AuthenticatedDocumentsClient({ user }: { user: AppUser }) {
             <Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
               {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <UserButton />
+            <SafeUserButton />
           </div>
         </header>
 
@@ -438,3 +438,4 @@ function DocumentsPreview({ user }: { user: AppUser }) {
     </main>
   );
 }
+

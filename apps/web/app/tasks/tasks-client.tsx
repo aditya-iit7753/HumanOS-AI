@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
   ArrowLeft,
@@ -79,7 +79,7 @@ export function TasksClient({ user, clerkReady }: { user: TaskUser; clerkReady: 
 }
 
 function AuthenticatedTasksClient({ user }: { user: TaskUser }) {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -236,7 +236,7 @@ function AuthenticatedTasksClient({ user }: { user: TaskUser }) {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" title="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-            <UserButton />
+            <SafeUserButton />
           </div>
         </div>
       </header>
