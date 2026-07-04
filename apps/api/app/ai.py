@@ -27,26 +27,34 @@ def build_context(memories: list[Memory], tasks: list[Task], goals: list[Goal]) 
     )
 
 
+def _chat_fallback(user_message: str) -> str:
+    return (
+        "I can help with that. Your AI provider is currently unavailable or out of quota, "
+        "so I am using HumanOS fallback mode. Here is a practical next step: clarify the outcome, "
+        "choose the smallest visible action, and schedule it today. "
+        f"Based on your note: {user_message}"
+    )
+
+
 def generate_answer(user_message: str, context: str) -> str:
     settings = get_settings()
     if not settings.openai_api_key or settings.openai_api_key == "replace-me":
-        return (
-            "I am running in local demo mode because OPENAI_API_KEY is not configured. "
-            "Here is a practical next step: clarify the outcome, choose the smallest visible action, "
-            f"and schedule it today. Based on your note: {user_message}"
-        )
+        return _chat_fallback(user_message)
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system", "content": context},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.5,
-    )
-    return response.choices[0].message.content or ""
+    try:
+        client = OpenAI(api_key=settings.openai_api_key)
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": context},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.5,
+        )
+        return response.choices[0].message.content or _chat_fallback(user_message)
+    except Exception:
+        return _chat_fallback(user_message)
 
 
 def maybe_extract_memory(user_message: str) -> str | None:
@@ -61,30 +69,29 @@ def maybe_extract_memory(user_message: str) -> str | None:
 def stream_answer(user_message: str, context: str):
     settings = get_settings()
     if not settings.openai_api_key or settings.openai_api_key == "replace-me":
-        demo = (
-            "I am running in local demo mode because OPENAI_API_KEY is not configured. "
-            "Here is a practical next step: clarify the outcome, choose the smallest visible action, "
-            f"and schedule it today. Based on your note: {user_message}"
-        )
-        for word in demo.split(" "):
+        for word in _chat_fallback(user_message).split(" "):
             yield word + " "
         return
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    stream = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system", "content": context},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.5,
-        stream=True,
-    )
-    for chunk in stream:
-        token = chunk.choices[0].delta.content
-        if token:
-            yield token
+    try:
+        client = OpenAI(api_key=settings.openai_api_key)
+        stream = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": context},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.5,
+            stream=True,
+        )
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token:
+                yield token
+    except Exception:
+        for word in _chat_fallback(user_message).split(" "):
+            yield word + " "
 
 
 def suggest_tasks(goals: list[Goal], existing_tasks: list[Task], focus: str = "") -> list[dict]:
