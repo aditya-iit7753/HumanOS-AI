@@ -42,7 +42,7 @@ from app.schemas import (
     UserRead,
 )
 from app.security import create_access_token, get_current_user, hash_password, verify_password
-from app.security_clerk import get_clerk_subject, get_current_clerk_user
+from app.security_clerk import decode_clerk_token, get_clerk_subject, get_current_clerk_user
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -206,33 +206,56 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 @app.post("/auth/clerk/sync", response_model=UserRead)
 def sync_clerk_profile(
     payload: ClerkProfileSync,
-    clerk_user_id: str = Depends(get_clerk_subject),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Clerk session token")
+
+    try:
+        token_payload = decode_clerk_token(token)
+        clerk_user_id = str(token_payload.get("sub") or "")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Clerk token verification failed during profile sync")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to verify Clerk session token") from exc
+
+    if not clerk_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Clerk subject")
     if payload.clerk_user_id != clerk_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Clerk user mismatch")
 
-    email = payload.email.lower()
-    user = db.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
-    if user is None:
-        user = db.scalar(select(User).where(User.email == email))
+    try:
+        email = payload.email.lower()
+        user = db.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
+        if user is None:
+            user = db.scalar(select(User).where(User.email == email))
 
-    if user is None:
-        user = User(
-            clerk_user_id=clerk_user_id,
-            email=email,
-            full_name=payload.full_name,
-            hashed_password="clerk_managed",
-        )
-        db.add(user)
-    else:
-        user.clerk_user_id = clerk_user_id
-        user.email = email
-        user.full_name = payload.full_name
+        if user is None:
+            user = User(
+                clerk_user_id=clerk_user_id,
+                email=email,
+                full_name=payload.full_name,
+                hashed_password="clerk_managed",
+            )
+            db.add(user)
+        else:
+            user.clerk_user_id = clerk_user_id
+            user.email = email
+            user.full_name = payload.full_name
 
-    db.commit()
-    db.refresh(user)
-    return user
+        db.commit()
+        db.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Clerk profile sync failed")
+        raise HTTPException(status_code=503, detail="Unable to sync user profile") from exc
 
 
 @app.get("/settings", response_model=api_schemas.UserSettingsRead)
