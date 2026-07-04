@@ -1,5 +1,6 @@
-﻿from functools import lru_cache
+from functools import lru_cache
 from typing import Any
+from urllib.error import URLError
 from urllib.request import urlopen
 
 from fastapi import Depends, HTTPException, status
@@ -20,10 +21,13 @@ def fetch_clerk_jwks() -> dict[str, Any]:
     settings = get_settings()
     if not settings.clerk_jwks_url:
         raise HTTPException(status_code=500, detail="CLERK_JWKS_URL is not configured")
-    with urlopen(settings.clerk_jwks_url, timeout=10) as response:
-        import json
+    try:
+        with urlopen(settings.clerk_jwks_url, timeout=10) as response:
+            import json
 
-        return json.loads(response.read().decode("utf-8"))
+            return json.loads(response.read().decode("utf-8"))
+    except (OSError, URLError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Unable to load Clerk signing keys") from exc
 
 
 def decode_clerk_token(token: str) -> dict[str, Any]:
@@ -55,6 +59,10 @@ def get_clerk_subject(credentials: HTTPAuthorizationCredentials | None = Depends
         payload = decode_clerk_token(credentials.credentials)
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Clerk session token") from None
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to verify Clerk session token") from exc
     subject = payload.get("sub")
     if not subject:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Clerk subject")

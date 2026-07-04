@@ -61,6 +61,8 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""))
         Base.metadata.create_all(bind=engine)
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_user_id VARCHAR(128)"))
