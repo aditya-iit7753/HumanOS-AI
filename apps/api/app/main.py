@@ -58,11 +58,20 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled API error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
 @app.on_event("startup")
 def startup() -> None:
     try:
-        with engine.begin() as connection:
-            connection.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""))
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""))
+        except Exception as exc:
+            logger.warning("Optional uuid-ossp extension setup skipped: %s", exc)
         Base.metadata.create_all(bind=engine)
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_user_id VARCHAR(128)"))
