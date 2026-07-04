@@ -70,8 +70,11 @@ def embed_text(text: str) -> list[float] | None:
     client = _openai_client()
     if client is None:
         return None
-    response = client.embeddings.create(model=get_settings().openai_embedding_model, input=text[:8000])
-    return response.data[0].embedding
+    try:
+        response = client.embeddings.create(model=get_settings().openai_embedding_model, input=text[:8000])
+        return response.data[0].embedding
+    except Exception:
+        return None
 
 
 def extract_memories_from_chat(user_message: str) -> list[ExtractedMemory]:
