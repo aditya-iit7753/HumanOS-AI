@@ -41,7 +41,7 @@ const workflow = [
 const pricing = [
   {
     name: "Free",
-    price: "?0",
+    price: "Rs. 0",
     period: "/month",
     copy: "For trying the HumanOS core loop.",
     featured: false,
@@ -55,7 +55,7 @@ const pricing = [
   },
   {
     name: "Pro",
-    price: "?499",
+    price: "Rs. 499",
     period: "/month",
     copy: "For students, builders, and focused career growth.",
     featured: true,
@@ -69,7 +69,7 @@ const pricing = [
   },
   {
     name: "Premium",
-    price: "?999",
+    price: "Rs. 999",
     period: "/month",
     copy: "For power users running life, study, work, and documents in HumanOS.",
     featured: false,
@@ -139,6 +139,7 @@ export default function LandingPage() {
       <Pricing />
       <FAQ />
       <CTA />
+      <Footer />
     </main>
   );
 }
@@ -363,4 +364,22 @@ function MiniPanel({ title, value, icon: Icon }: { title: string; value: string;
 
 
 
+
+
+function Footer() {
+  return (
+    <footer className="border-t bg-card/35 px-4 py-8 text-sm text-muted-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p>HumanOS AI - personal AI operating system for life and career.</p>
+        <div className="flex flex-wrap gap-4">
+          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          <Link href="/refund" className="hover:text-foreground">Refunds</Link>
+          <Link href="/security" className="hover:text-foreground">Security</Link>
+          <Link href="/sell" className="hover:text-foreground">For buyers</Link>
+        </div>
+      </div>
+    </footer>
+  );
+}
 

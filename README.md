@@ -439,3 +439,11 @@ Backend variables:
 - If `npm run typecheck` reports missing `.next/types`, run `npm run build` once, then rerun typecheck.
 - If Docker ports are busy, stop existing services on ports `3000`, `8000`, `5432`, or `6333`, or adjust `docker-compose.yml`.
 - If Docker says `dockerDesktopLinuxEngine` cannot be found on Windows, start Docker Desktop and wait until the Linux engine is running, then rerun `docker compose up --build`.
+
+## Commercial Sale Readiness
+
+HumanOS AI now includes buyer-facing sales assets in `sales-kit/` and generated PDFs in `output/pdf/`.
+
+Before selling or launching publicly, replace all test/demo credentials with buyer-owned production accounts for OpenAI, Clerk, PostgreSQL, Qdrant, Vercel, Railway, payment provider, domain, and branding. Review `/privacy`, `/terms`, `/refund`, and `/security` with qualified legal counsel before accepting real customers.
+
+Recommended buyer handover: live demo, source repository transfer, environment variable setup, database/vector database provisioning, payment webhook setup, acceptance tests, and 3-7 days of setup support.

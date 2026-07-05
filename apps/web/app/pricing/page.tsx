@@ -27,7 +27,7 @@ const plans: Array<{
   {
     id: "free",
     name: "Free",
-    price: "?0",
+    price: "Rs. 0",
     period: "/month",
     copy: "Start with the HumanOS basics.",
     cta: "Start free",
@@ -37,7 +37,7 @@ const plans: Array<{
   {
     id: "pro",
     name: "Pro",
-    price: "?499",
+    price: "Rs. 499",
     period: "/month",
     copy: "For serious personal execution.",
     cta: "Upgrade to Pro",
@@ -47,7 +47,7 @@ const plans: Array<{
   {
     id: "premium",
     name: "Premium",
-    price: "?999",
+    price: "Rs. 999",
     period: "/month",
     copy: "For power users and heavy document workflows.",
     cta: "Upgrade to Premium",
@@ -168,4 +168,5 @@ function PlanCard({ plan, loading, onSelect }: { plan: (typeof plans)[number]; l
     </Card>
   );
 }
+
 

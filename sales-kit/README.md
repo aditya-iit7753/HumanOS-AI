@@ -24,3 +24,7 @@ Use these files:
 - `screenshots-checklist.md` - exact screenshots to capture
 
 PDF exports are generated in `output/pdf/`.
+
+## Sellable launch checklist
+
+See `sellable-launch-checklist.md` for the buyer handover checklist, production key replacement list, acceptance tests, and recommended sale terms.
