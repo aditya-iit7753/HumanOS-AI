@@ -39,27 +39,40 @@ def _chat_fallback(user_message: str) -> str:
     )
 
 
+
+def _chat_models(settings) -> list[str]:
+    candidates = [
+        settings.openai_chat_model,
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o-mini",
+    ]
+    models: list[str] = []
+    for model in candidates:
+        if model and model not in models:
+            models.append(model)
+    return models
 def generate_answer(user_message: str, context: str) -> str:
     settings = get_settings()
     if not settings.openai_api_key or settings.openai_api_key == "replace-me":
         return _chat_fallback(user_message)
 
-    try:
-        client = OpenAI(api_key=settings.openai_api_key)
-        response = client.chat.completions.create(
-            model=settings.openai_chat_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": context},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=0.5,
-        )
-        return response.choices[0].message.content or _chat_fallback(user_message)
-    except Exception as exc:
-        logger.exception("OpenAI chat completion failed")
-        return _chat_fallback(user_message)
-
+    client = OpenAI(api_key=settings.openai_api_key)
+    for model in _chat_models(settings):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": context},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.5,
+            )
+            return response.choices[0].message.content or _chat_fallback(user_message)
+        except Exception:
+            logger.exception("OpenAI chat completion failed for model %s", model)
+    return _chat_fallback(user_message)
 
 def maybe_extract_memory(user_message: str) -> str | None:
     lowered = user_message.lower()
@@ -77,27 +90,28 @@ def stream_answer(user_message: str, context: str):
             yield word + " "
         return
 
-    try:
-        client = OpenAI(api_key=settings.openai_api_key)
-        stream = client.chat.completions.create(
-            model=settings.openai_chat_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": context},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=0.5,
-            stream=True,
-        )
-        for chunk in stream:
-            token = chunk.choices[0].delta.content
-            if token:
-                yield token
-    except Exception as exc:
-        logger.exception("OpenAI streaming chat failed")
-        for word in _chat_fallback(user_message).split(" "):
-            yield word + " "
-
+    client = OpenAI(api_key=settings.openai_api_key)
+    for model in _chat_models(settings):
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": context},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.5,
+                stream=True,
+            )
+            for chunk in stream:
+                token = chunk.choices[0].delta.content
+                if token:
+                    yield token
+            return
+        except Exception:
+            logger.exception("OpenAI streaming chat failed for model %s", model)
+    for word in _chat_fallback(user_message).split(" "):
+        yield word + " "
 
 def suggest_tasks(goals: list[Goal], existing_tasks: list[Task], focus: str = "") -> list[dict]:
     settings = get_settings()
