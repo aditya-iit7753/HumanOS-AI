@@ -1,9 +1,12 @@
 import json
+import logging
 from openai import OpenAI
 
 from app.config import get_settings
 from app.models import Memory, Task, Goal
 
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are HumanOS AI, a private life and career copilot.
 Be concise, emotionally intelligent, practical, and action-oriented.
@@ -44,7 +47,7 @@ def generate_answer(user_message: str, context: str) -> str:
     try:
         client = OpenAI(api_key=settings.openai_api_key)
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "system", "content": context},
@@ -53,7 +56,8 @@ def generate_answer(user_message: str, context: str) -> str:
             temperature=0.5,
         )
         return response.choices[0].message.content or _chat_fallback(user_message)
-    except Exception:
+    except Exception as exc:
+        logger.exception("OpenAI chat completion failed")
         return _chat_fallback(user_message)
 
 
@@ -76,7 +80,7 @@ def stream_answer(user_message: str, context: str):
     try:
         client = OpenAI(api_key=settings.openai_api_key)
         stream = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "system", "content": context},
@@ -89,7 +93,8 @@ def stream_answer(user_message: str, context: str):
             token = chunk.choices[0].delta.content
             if token:
                 yield token
-    except Exception:
+    except Exception as exc:
+        logger.exception("OpenAI streaming chat failed")
         for word in _chat_fallback(user_message).split(" "):
             yield word + " "
 
@@ -125,7 +130,7 @@ def suggest_tasks(goals: list[Goal], existing_tasks: list[Task], focus: str = ""
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You create concise, useful task suggestions for a life and career copilot."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -164,7 +169,7 @@ def generate_goal_roadmap(title: str, timeframe: str = "6 months", current_level
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You create practical milestone roadmaps for long-term life and career goals."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -265,7 +270,7 @@ def generate_career_copilot(tool: str, context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are HumanOS AI Career Copilot. Give concrete, personalized, career-useful output as JSON."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -322,7 +327,7 @@ def generate_daily_schedule(context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are HumanOS Daily Planner. Build realistic, humane time-blocked plans connected to tasks and goals."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -369,7 +374,7 @@ def generate_evening_review(plan: dict, review: dict) -> dict:
     prompt = {"plan": plan, "review": review, "agenda_count": agenda_count, "instructions": "Generate a concise evening review. Return JSON: reflection, score 0-100, wins array, improvements array."}
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You write practical evening reviews that are honest, kind, and action-oriented."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -444,7 +449,7 @@ def generate_agent_action_plan(agent_type: str, context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are a specialized HumanOS AI agent. Be practical, personalized, and action-oriented. Use the provided user memory and app context."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -522,7 +527,7 @@ def generate_research_result(topic: str, context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are HumanOS Research Agent. Create concise, grounded research summaries from provided user context, memory, and documents. Be explicit about uncertainty."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -606,7 +611,7 @@ def generate_study_result(topic: str, context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are HumanOS Study Agent. Teach simply, plan practically, and personalize using memory and documents."},
                 {"role": "user", "content": json.dumps(prompt)},
@@ -708,7 +713,7 @@ def generate_productivity_result(context: dict) -> dict:
     }
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "You are HumanOS Productivity Agent. Diagnose execution patterns and create a practical plan from tasks, goals, plans, and memory."},
                 {"role": "user", "content": json.dumps(prompt)},

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     qdrant_collection: str = "humanos_memories"
     qdrant_document_collection: str = "humanos_documents"
+    openai_chat_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_memory_model: str = "gpt-4.1-mini"
     app_url: str = "http://localhost:3000"
