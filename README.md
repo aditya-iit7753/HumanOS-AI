@@ -447,3 +447,29 @@ HumanOS AI now includes buyer-facing sales assets in `sales-kit/` and generated 
 Before selling or launching publicly, replace all test/demo credentials with buyer-owned production accounts for OpenAI, Clerk, PostgreSQL, Qdrant, Vercel, Railway, payment provider, domain, and branding. Review `/privacy`, `/terms`, `/refund`, and `/security` with qualified legal counsel before accepting real customers.
 
 Recommended buyer handover: live demo, source repository transfer, environment variable setup, database/vector database provisioning, payment webhook setup, acceptance tests, and 3-7 days of setup support.
+
+
+## Razorpay Production Subscriptions
+
+HumanOS AI supports Razorpay subscriptions for public India-ready payments. Configure these on the Railway backend:
+
+```env
+RAZORPAY_KEY_ID=rzp_live_xxxxx
+RAZORPAY_KEY_SECRET=xxxxx
+RAZORPAY_WEBHOOK_SECRET=choose-a-webhook-secret
+RAZORPAY_PLAN_STARTER=plan_xxxxx
+RAZORPAY_PLAN_PRO=plan_xxxxx
+RAZORPAY_PLAN_PREMIUM=plan_xxxxx
+RAZORPAY_PLAN_ENTERPRISE=
+APP_URL=https://your-vercel-domain.vercel.app
+```
+
+Create Razorpay plans for Starter Rs. 149/month, Pro Rs. 499/month, and Premium Rs. 999/month. Add a webhook in Razorpay Dashboard pointing to:
+
+```text
+https://your-railway-backend.up.railway.app/billing/razorpay/webhook
+```
+
+Subscribe to subscription events such as `subscription.authenticated`, `subscription.activated`, `subscription.charged`, `subscription.pending`, `subscription.halted`, and `subscription.cancelled`. Razorpay signs webhooks with `x-razorpay-signature`; the backend verifies the raw request body with `RAZORPAY_WEBHOOK_SECRET` before updating PostgreSQL.
+
+The pricing page creates a Razorpay subscription through FastAPI, opens Razorpay Checkout, and waits for the webhook to activate the local subscription. Free users remain limited until webhook confirmation marks the plan active.

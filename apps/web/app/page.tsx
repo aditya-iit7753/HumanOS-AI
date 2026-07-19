@@ -45,13 +45,15 @@ const pricing = [
     period: "/month",
     copy: "For trying the HumanOS core loop.",
     featured: false,
-    limits: {
-      chat: "50 messages / month",
-      memory: "25 saved memories",
-      documents: "3 uploads / month",
-      agents: "Research + Study preview",
-      career: "Basic roadmap only",
-    },
+    limits: { chat: "50 messages / month", memory: "25 saved memories", documents: "3 uploads / month", agents: "Research + Study preview", career: "Basic roadmap only" },
+  },
+  {
+    name: "Starter",
+    price: "Rs. 149",
+    period: "/month",
+    copy: "For students and job seekers who want an affordable AI copilot.",
+    featured: false,
+    limits: { chat: "100 messages / month", memory: "50 saved memories", documents: "5 uploads / month", agents: "Research + Study", career: "Basic career roadmap" },
   },
   {
     name: "Pro",
@@ -59,13 +61,7 @@ const pricing = [
     period: "/month",
     copy: "For students, builders, and focused career growth.",
     featured: true,
-    limits: {
-      chat: "1,000 messages / month",
-      memory: "500 saved memories",
-      documents: "50 uploads / month",
-      agents: "All standard agents",
-      career: "Full Career Copilot",
-    },
+    limits: { chat: "1,000 messages / month", memory: "500 saved memories", documents: "50 uploads / month", agents: "All standard agents", career: "Full Career Copilot" },
   },
   {
     name: "Premium",
@@ -73,13 +69,7 @@ const pricing = [
     period: "/month",
     copy: "For power users running life, study, work, and documents in HumanOS.",
     featured: false,
-    limits: {
-      chat: "Unlimited fair use",
-      memory: "Unlimited memories",
-      documents: "250 uploads / month",
-      agents: "All agents + priority runs",
-      career: "Advanced ATS + interview prep",
-    },
+    limits: { chat: "Unlimited fair use", memory: "Unlimited memories", documents: "250 uploads / month", agents: "All agents + priority runs", career: "Advanced ATS + interview prep" },
   },
   {
     name: "Enterprise",
@@ -87,13 +77,7 @@ const pricing = [
     period: "",
     copy: "For teams, cohorts, institutions, and managed deployments.",
     featured: false,
-    limits: {
-      chat: "Custom limits",
-      memory: "Workspace memory controls",
-      documents: "Custom storage policy",
-      agents: "Custom agent workflows",
-      career: "Team career programs",
-    },
+    limits: { chat: "Custom limits", memory: "Workspace memory controls", documents: "Custom storage policy", agents: "Custom agent workflows", career: "Team career programs" },
   },
 ];
 
@@ -299,7 +283,7 @@ function PricingCard({ plan }: { plan: (typeof pricing)[number] }) {
           </div>
         ))}
       </div>
-      <Button className="mt-6 w-full" variant={plan.featured ? "default" : "outline"}>{plan.name === "Enterprise" ? "Contact sales" : `Choose ${plan.name}`}</Button>
+      <Button asChild className="mt-6 w-full" variant={plan.featured ? "default" : "outline"}><Link href={plan.name === "Enterprise" ? "mailto:sales@humanos.ai?subject=HumanOS%20AI%20Enterprise" : "/pricing"}>{plan.name === "Enterprise" ? "Contact sales" : `Choose ${plan.name}`}</Link></Button>
     </div>
   );
 }

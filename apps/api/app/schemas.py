@@ -553,11 +553,17 @@ class CareerProfileRead(CareerProfileUpsert):
 
 
 class BillingCheckoutRequest(BaseModel):
-    plan: str = Field(pattern="^(pro|premium|enterprise)$")
+    plan: str = Field(pattern="^(starter|pro|premium|enterprise)$")
 
 
 class BillingCheckoutResponse(BaseModel):
-    url: str
+    provider: str = "stripe"
+    url: str | None = None
+    key_id: str | None = None
+    subscription_id: str | None = None
+    plan: str | None = None
+    name: str | None = None
+    email: EmailStr | None = None
 
 
 class BillingPortalResponse(BaseModel):
@@ -571,6 +577,8 @@ class SubscriptionRead(BaseModel):
     current_period_end: datetime | None = None
     cancel_at_period_end: bool = False
     stripe_customer_id: str | None = None
+    razorpay_customer_id: str | None = None
+    razorpay_subscription_id: str | None = None
 
 
 class UsageRead(BaseModel):

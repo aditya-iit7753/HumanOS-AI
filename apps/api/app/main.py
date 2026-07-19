@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta, timezone
+import json
 import logging
 from uuid import UUID
 
@@ -14,7 +15,7 @@ except Exception:  # pragma: no cover
 
 from app import models as db_models
 from app import schemas as api_schemas
-from app.billing import create_billing_portal_session, create_checkout_session, ensure_agent_access, ensure_career_access, ensure_limit, handle_checkout_completed, subscription_payload, sync_stripe_subscription, usage_payload
+from app.billing import create_billing_portal_session, create_checkout_session, ensure_agent_access, ensure_career_access, ensure_limit, handle_checkout_completed, subscription_payload, sync_razorpay_subscription, sync_stripe_subscription, usage_payload, verify_razorpay_webhook_signature
 from app.ai import build_context, generate_agent_action_plan, generate_answer, generate_career_copilot, generate_daily_schedule, generate_evening_review, generate_goal_roadmap, generate_productivity_result, generate_research_result, generate_study_result, stream_answer, suggest_tasks
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -89,6 +90,10 @@ def startup() -> None:
             connection.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS extracted_text TEXT NOT NULL DEFAULT ''"))
             connection.execute(text("CREATE TABLE IF NOT EXISTS user_settings (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, ai_preferences JSONB NOT NULL DEFAULT '{}'::jsonb, memory_enabled BOOLEAN NOT NULL DEFAULT true, theme VARCHAR(24) NOT NULL DEFAULT 'system', dev_api_keys JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_user_settings_user_id ON user_settings (user_id)"))
+            connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_customer_id VARCHAR(128)"))
+            connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(128)"))
+            connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_plan_id VARCHAR(128)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_razorpay_subscription_id ON subscriptions (razorpay_subscription_id) WHERE razorpay_subscription_id IS NOT NULL"))
     except Exception as exc:
         logger.exception("Database startup setup failed; healthcheck remains available: %s", exc)
 
@@ -171,7 +176,7 @@ def get_usage(user: User = Depends(get_current_clerk_user), db: Session = Depend
 
 @app.post("/billing/checkout", response_model=api_schemas.BillingCheckoutResponse)
 def billing_checkout(payload: api_schemas.BillingCheckoutRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    return {"url": create_checkout_session(db, user, payload.plan)}
+    return create_checkout_session(db, user, payload.plan)
 
 
 @app.post("/billing/portal", response_model=api_schemas.BillingPortalResponse)
@@ -203,6 +208,20 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
         sync_stripe_subscription(db, data)
     return {"received": True}
+
+
+@app.post("/billing/razorpay/webhook")
+async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    signature = request.headers.get("x-razorpay-signature")
+    verify_razorpay_webhook_signature(payload, signature)
+    try:
+        event = json.loads(payload.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid Razorpay webhook payload") from exc
+    sync_razorpay_subscription(db, event)
+    return {"received": True}
+
 @app.post("/auth/clerk/sync", response_model=UserRead)
 def sync_clerk_profile(
     payload: ClerkProfileSync,

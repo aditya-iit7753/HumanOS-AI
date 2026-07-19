@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     stripe_price_pro: str = ""
     stripe_price_premium: str = ""
     stripe_price_enterprise: str = ""
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+    razorpay_plan_starter: str = ""
+    razorpay_plan_pro: str = ""
+    razorpay_plan_premium: str = ""
+    razorpay_plan_enterprise: str = ""
 
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8-sig", extra="ignore")

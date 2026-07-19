@@ -53,6 +53,7 @@ class MemoryType(str, enum.Enum):
 
 class BillingPlan(str, enum.Enum):
     free = "free"
+    starter = "starter"
     pro = "pro"
     premium = "premium"
     enterprise = "enterprise"
@@ -95,7 +96,11 @@ class User(Base):
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
-    __table_args__ = (UniqueConstraint("stripe_customer_id"), UniqueConstraint("stripe_subscription_id"),)
+    __table_args__ = (
+        UniqueConstraint("stripe_customer_id"),
+        UniqueConstraint("stripe_subscription_id"),
+        UniqueConstraint("razorpay_subscription_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
@@ -104,6 +109,9 @@ class Subscription(Base):
     stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     stripe_price_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    razorpay_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    razorpay_plan_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
     meta: Mapped[dict] = mapped_column(JSONB, default=dict)

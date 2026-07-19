@@ -1,6 +1,12 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -21,6 +27,13 @@ PLAN_LIMITS: dict[str, dict[str, Any]] = {
         "chat_messages": 50,
         "memories": 25,
         "documents": 3,
+        "agents": ["study", "research"],
+        "career_copilot": "basic",
+    },
+    BillingPlan.starter.value: {
+        "chat_messages": 100,
+        "memories": 50,
+        "documents": 5,
         "agents": ["study", "research"],
         "career_copilot": "basic",
     },
@@ -48,6 +61,7 @@ PLAN_LIMITS: dict[str, dict[str, Any]] = {
 }
 
 PAID_STATUSES = {SubscriptionStatus.active.value, SubscriptionStatus.trialing.value}
+RAZORPAY_API_BASE = "https://api.razorpay.com/v1"
 
 
 def price_to_plan(price_id: str | None) -> str:
@@ -58,6 +72,17 @@ def price_to_plan(price_id: str | None) -> str:
         settings.stripe_price_enterprise: BillingPlan.enterprise.value,
     }
     return mapping.get(price_id or "", BillingPlan.free.value)
+
+
+def razorpay_plan_to_plan(plan_id: str | None) -> str:
+    settings = get_settings()
+    mapping = {
+        settings.razorpay_plan_starter: BillingPlan.starter.value,
+        settings.razorpay_plan_pro: BillingPlan.pro.value,
+        settings.razorpay_plan_premium: BillingPlan.premium.value,
+        settings.razorpay_plan_enterprise: BillingPlan.enterprise.value,
+    }
+    return mapping.get(plan_id or "", BillingPlan.free.value)
 
 
 def get_or_create_subscription(db: Session, user: User) -> Subscription:
@@ -88,6 +113,8 @@ def subscription_payload(db: Session, user: User) -> dict[str, Any]:
         "current_period_end": subscription.current_period_end,
         "cancel_at_period_end": subscription.cancel_at_period_end,
         "stripe_customer_id": subscription.stripe_customer_id,
+        "razorpay_customer_id": subscription.razorpay_customer_id,
+        "razorpay_subscription_id": subscription.razorpay_subscription_id,
     }
 
 
@@ -152,10 +179,85 @@ def usage_payload(db: Session, user: User) -> dict[str, Any]:
     }
 
 
-def create_checkout_session(db: Session, user: User, plan: str) -> str:
+def _has_razorpay_config() -> bool:
+    settings = get_settings()
+    return bool(settings.razorpay_key_id and settings.razorpay_key_secret)
+
+
+def _razorpay_plan_id(plan: str) -> str:
+    settings = get_settings()
+    plan_id = {
+        BillingPlan.starter.value: settings.razorpay_plan_starter,
+        BillingPlan.pro.value: settings.razorpay_plan_pro,
+        BillingPlan.premium.value: settings.razorpay_plan_premium,
+        BillingPlan.enterprise.value: settings.razorpay_plan_enterprise,
+    }.get(plan, "")
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="This Razorpay plan is not configured")
+    return plan_id
+
+
+def _razorpay_request(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    settings = get_settings()
+    body = json.dumps(payload).encode("utf-8")
+    token = base64.b64encode(f"{settings.razorpay_key_id}:{settings.razorpay_key_secret}".encode("utf-8")).decode("ascii")
+    request = urllib.request.Request(
+        f"{RAZORPAY_API_BASE}{path}",
+        data=body,
+        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=502, detail=f"Razorpay API error: {detail}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to reach Razorpay") from exc
+
+
+def create_razorpay_subscription(db: Session, user: User, plan: str) -> dict[str, Any]:
+    settings = get_settings()
+    if not _has_razorpay_config():
+        raise HTTPException(status_code=500, detail="Razorpay is not configured")
+    plan_id = _razorpay_plan_id(plan)
+    payload = {
+        "plan_id": plan_id,
+        "total_count": 120,
+        "quantity": 1,
+        "customer_notify": 1,
+        "notes": {"user_id": str(user.id), "plan": plan, "email": user.email},
+    }
+    data = _razorpay_request("/subscriptions", payload)
+    subscription = get_or_create_subscription(db, user)
+    subscription.plan = plan
+    subscription.status = SubscriptionStatus.inactive.value
+    subscription.razorpay_subscription_id = data.get("id")
+    subscription.razorpay_plan_id = plan_id
+    subscription.razorpay_customer_id = data.get("customer_id")
+    subscription.meta = {**(subscription.meta or {}), "provider": "razorpay", "latest_razorpay_subscription": data}
+    db.commit()
+    return {
+        "provider": "razorpay",
+        "key_id": settings.razorpay_key_id,
+        "subscription_id": data.get("id"),
+        "plan": plan,
+        "name": user.full_name,
+        "email": user.email,
+    }
+
+
+def create_checkout_session(db: Session, user: User, plan: str) -> dict[str, Any]:
+    if _has_razorpay_config():
+        return create_razorpay_subscription(db, user, plan)
+    return {"provider": "stripe", "url": create_stripe_checkout_session(db, user, plan)}
+
+
+def create_stripe_checkout_session(db: Session, user: User, plan: str) -> str:
     settings = get_settings()
     if not settings.stripe_secret_key or stripe is None:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
+        raise HTTPException(status_code=500, detail="Razorpay or Stripe is not configured")
     price_id = {
         BillingPlan.pro.value: settings.stripe_price_pro,
         BillingPlan.premium.value: settings.stripe_price_premium,
@@ -183,6 +285,8 @@ def create_checkout_session(db: Session, user: User, plan: str) -> str:
 def create_billing_portal_session(db: Session, user: User) -> str:
     settings = get_settings()
     subscription = get_or_create_subscription(db, user)
+    if subscription.razorpay_subscription_id:
+        raise HTTPException(status_code=400, detail="Manage Razorpay subscriptions from your Razorpay payment email or contact support.")
     if stripe is None:
         raise HTTPException(status_code=500, detail="Stripe is not configured")
     if not settings.stripe_secret_key or not subscription.stripe_customer_id:
@@ -193,6 +297,57 @@ def create_billing_portal_session(db: Session, user: User) -> str:
         return_url=f"{settings.app_url.rstrip('/')}/settings",
     )
     return str(session.url)
+
+
+def verify_razorpay_webhook_signature(payload: bytes, signature: str | None) -> None:
+    settings = get_settings()
+    if not settings.razorpay_webhook_secret:
+        return
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing Razorpay signature")
+    expected = hmac.new(settings.razorpay_webhook_secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(status_code=400, detail="Invalid Razorpay webhook signature")
+
+
+def _razorpay_status_to_local(status_value: str | None, event_type: str | None) -> str:
+    if event_type in {"subscription.authenticated", "subscription.activated", "subscription.charged"}:
+        return SubscriptionStatus.active.value
+    if status_value in {"active", "authenticated", "completed"}:
+        return SubscriptionStatus.active.value
+    if status_value in {"pending", "halted"}:
+        return SubscriptionStatus.past_due.value
+    if status_value in {"cancelled", "cancelled_at_cycle_end"} or event_type == "subscription.cancelled":
+        return SubscriptionStatus.canceled.value
+    return SubscriptionStatus.inactive.value
+
+
+def sync_razorpay_subscription(db: Session, event: dict[str, Any]) -> None:
+    event_type = event.get("event")
+    entity = (((event.get("payload") or {}).get("subscription") or {}).get("entity") or {})
+    if not entity:
+        return
+    subscription_id = entity.get("id")
+    plan_id = entity.get("plan_id")
+    notes = entity.get("notes") or {}
+    user_id = notes.get("user_id")
+    subscription = None
+    if subscription_id:
+        subscription = db.scalar(select(Subscription).where(Subscription.razorpay_subscription_id == subscription_id))
+    if subscription is None and user_id:
+        subscription = db.scalar(select(Subscription).where(Subscription.user_id == UUID(str(user_id))))
+    if subscription is None:
+        return
+    subscription.plan = notes.get("plan") or razorpay_plan_to_plan(plan_id)
+    subscription.status = _razorpay_status_to_local(entity.get("status"), event_type)
+    subscription.razorpay_customer_id = entity.get("customer_id")
+    subscription.razorpay_subscription_id = subscription_id
+    subscription.razorpay_plan_id = plan_id
+    subscription.cancel_at_period_end = bool(entity.get("cancel_at_cycle_end") or entity.get("ended_at"))
+    period_end = entity.get("current_end") or entity.get("end_at")
+    subscription.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc) if period_end else None
+    subscription.meta = {**(subscription.meta or {}), "provider": "razorpay", "last_razorpay_event": event}
+    db.commit()
 
 
 def sync_stripe_subscription(db: Session, data: dict[str, Any]) -> None:
@@ -224,7 +379,7 @@ def sync_stripe_subscription(db: Session, data: dict[str, Any]) -> None:
     subscription.cancel_at_period_end = bool(data.get("cancel_at_period_end") or False)
     period_end = data.get("current_period_end")
     subscription.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc) if period_end else None
-    subscription.meta = {"last_event_subscription": data}
+    subscription.meta = {**(subscription.meta or {}), "provider": "stripe", "last_event_subscription": data}
     db.commit()
 
 
@@ -244,4 +399,5 @@ def handle_checkout_completed(db: Session, data: dict[str, Any]) -> None:
     subscription.status = SubscriptionStatus.active.value
     subscription.stripe_customer_id = customer_id
     subscription.stripe_subscription_id = subscription_id
+    subscription.meta = {**(subscription.meta or {}), "provider": "stripe", "checkout_session": data}
     db.commit()
