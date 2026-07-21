@@ -473,3 +473,34 @@ https://your-railway-backend.up.railway.app/billing/razorpay/webhook
 Subscribe to subscription events such as `subscription.authenticated`, `subscription.activated`, `subscription.charged`, `subscription.pending`, `subscription.halted`, and `subscription.cancelled`. Razorpay signs webhooks with `x-razorpay-signature`; the backend verifies the raw request body with `RAZORPAY_WEBHOOK_SECRET` before updating PostgreSQL.
 
 The pricing page creates a Razorpay subscription through FastAPI, opens Razorpay Checkout, and waits for the webhook to activate the local subscription. Free users remain limited until webhook confirmation marks the plan active.
+
+## Production Security Checklist
+
+Use this checklist before inviting real users or running paid ads:
+
+- Use production Clerk keys only: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...` and `CLERK_SECRET_KEY=sk_live_...`.
+- Enable 2FA on GitHub, Vercel, Railway, Clerk, Razorpay, OpenAI, and Qdrant accounts.
+- Keep `.env`, API keys, database URLs, webhook secrets, and service keys out of GitHub.
+- Restrict backend CORS in Railway to your real frontend domain only, for example `CORS_ORIGINS=https://www.humanosai.in,https://humanosai.in`.
+- Set `APP_URL=https://www.humanosai.in` in Railway.
+- Set `RATE_LIMIT_PER_MINUTE=120`, `AUTH_RATE_LIMIT_PER_MINUTE=20`, and `MAX_REQUEST_BYTES=10485760` unless you intentionally need different limits.
+- Use Razorpay live keys only in production and keep `RAZORPAY_WEBHOOK_SECRET` strong and private.
+- Verify Razorpay webhooks are active for subscription and payment events.
+- Use Railway PostgreSQL private/internal URL for backend-to-database connections where possible.
+- Enable database backups and test restore once before launch.
+- Use Qdrant Cloud API keys or private Railway networking; do not expose an unauthenticated Qdrant service publicly.
+- Rotate any key that was shared in chat, screenshots, videos, or support messages.
+- Review Railway and Vercel logs weekly for repeated 401, 403, 429, and 500 errors.
+- Avoid asking users to upload highly sensitive government, medical, bank, or password documents until you add stronger compliance controls.
+- Add a public support email and keep About, Contact, Privacy, Terms, Refund, and Security pages linked from the footer.
+
+Security controls currently included in code:
+
+- Clerk-protected frontend dashboard routes.
+- Clerk JWT verification on protected backend endpoints.
+- Server-side OpenAI, Razorpay, database, and Qdrant keys.
+- Razorpay signature verification before subscription activation.
+- Backend CORS allowlist configuration.
+- Backend request size limiting.
+- Backend in-memory rate limiting for API abuse reduction.
+- Backend and frontend security headers including HSTS, frame protection, nosniff, referrer policy, permissions policy, and CSP.

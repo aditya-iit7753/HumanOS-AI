@@ -1,4 +1,8 @@
+from collections import defaultdict, deque
+from collections import defaultdict, deque
 from datetime import datetime, time, timedelta, timezone
+import time as time_module
+import time as time_module
 import json
 import logging
 from uuid import UUID
@@ -48,6 +52,55 @@ from app.security_clerk import decode_clerk_token, get_clerk_subject, get_curren
 settings = get_settings()
 logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name, version="1.0.0")
+
+_rate_limit_hits: dict[str, deque[float]] = defaultdict(deque)
+
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(self)",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "X-Robots-Tag": "noindex" if settings.app_url.startswith("http://localhost") else "index, follow",
+}
+
+
+def _client_key(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    if request.method != "OPTIONS":
+        content_length = request.headers.get("content-length")
+        try:
+            request_size = int(content_length) if content_length else 0
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid content length"})
+        if request_size > settings.max_request_bytes:
+            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+
+        now = time_module.monotonic()
+        window_start = now - 60
+        key = f"{_client_key(request)}:{request.url.path}"
+        hits = _rate_limit_hits[key]
+        while hits and hits[0] < window_start:
+            hits.popleft()
+        limit = settings.auth_rate_limit_per_minute if request.url.path.startswith("/auth") else settings.rate_limit_per_minute
+        if len(hits) >= limit:
+            return JSONResponse(status_code=429, content={"detail": "Too many requests. Please try again shortly."})
+        hits.append(now)
+
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    if settings.app_url.startswith("https://"):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    response.headers.setdefault("Cache-Control", "no-store" if request.url.path.startswith(("/auth", "/billing", "/settings")) else "private, max-age=0")
+    return response
 
 app.add_middleware(
     CORSMiddleware,

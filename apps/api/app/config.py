@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     razorpay_plan_pro: str = ""
     razorpay_plan_premium: str = ""
     razorpay_plan_enterprise: str = ""
-
+    rate_limit_per_minute: int = 120
+    auth_rate_limit_per_minute: int = 20
+    max_request_bytes: int = 10 * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8-sig", extra="ignore")
 
