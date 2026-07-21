@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { useSafeAuth } from "@/components/clerk-safe";
 import { ArrowRight, Check, ChevronLeft, Loader2, LockKeyhole, Moon, Sparkles, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -39,7 +40,7 @@ type RazorpayOptions = {
   subscription_id: string;
   name: string;
   description: string;
-  prefill: { name?: string | null; email?: string | null };
+  prefill: { name?: string | null; email?: string | null; contact?: string | null };
   notes: Record<string, string>;
   theme: { color: string };
   handler: (response: RazorpaySuccessResponse) => void | Promise<void>;
@@ -150,6 +151,7 @@ function loadRazorpay(): Promise<void> {
 export default function PricingPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const { getToken, isSignedIn } = useSafeAuth();
+  const { user } = useUser();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
@@ -184,6 +186,8 @@ export default function PricingPage() {
   }, [getToken, isSignedIn]);
 
   const activePlan = subscription && paidStatuses.has(subscription.status) ? subscription.plan : "free";
+  const checkoutPhone = user?.primaryPhoneNumber?.phoneNumber ?? user?.phoneNumbers?.[0]?.phoneNumber ?? "";
+
   async function startCheckout(plan: PlanId) {
     setError("");
     if (plan === "free") {
@@ -197,6 +201,10 @@ export default function PricingPage() {
     const token = await getToken();
     if (!token) {
       window.location.href = `/sign-up?redirect_url=${encodeURIComponent("/pricing")}`;
+      return;
+    }
+    if (!checkoutPhone) {
+      setError("Please add a phone number to your HumanOS AI account before payment. Razorpay checkout will use only that logged-in account phone number.");
       return;
     }
     setLoadingPlan(plan);
@@ -219,9 +227,9 @@ export default function PricingPage() {
           subscription_id: data.subscription_id,
           name: "HumanOSai",
           description: `${plan.charAt(0).toUpperCase()}${plan.slice(1)} monthly subscription`,
-          prefill: { name: data.name, email: data.email },
-          notes: { plan, product: "HumanOSai", email: data.email ?? "" },
-          readonly: { email: Boolean(data.email) },
+          prefill: { name: data.name, email: data.email, contact: checkoutPhone },
+          notes: { plan, product: "HumanOSai", email: data.email ?? "", contact: checkoutPhone },
+          readonly: { email: Boolean(data.email), contact: true },
           theme: { color: "#2563eb" },
           handler: async (payment: RazorpaySuccessResponse) => {
             try {
