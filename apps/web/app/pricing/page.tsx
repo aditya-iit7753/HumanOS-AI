@@ -228,7 +228,7 @@ export default function PricingPage() {
             try {
               const verifyResponse = await fetch(`${API_URL}/billing/razorpay/verify`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ plan, ...payment }),
               });
               if (!verifyResponse.ok) {

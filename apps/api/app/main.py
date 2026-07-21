@@ -180,8 +180,8 @@ def billing_checkout(payload: api_schemas.BillingCheckoutRequest, user: User = D
 
 
 @app.post("/billing/razorpay/verify", response_model=api_schemas.SubscriptionRead)
-def verify_razorpay_payment(payload: api_schemas.RazorpayVerifyRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    return verify_razorpay_checkout(db, user, payload.model_dump())
+def verify_razorpay_payment(payload: api_schemas.RazorpayVerifyRequest, db: Session = Depends(get_db)):
+    return verify_razorpay_checkout(db, payload.model_dump())
 
 
 @app.post("/billing/portal", response_model=api_schemas.BillingPortalResponse)
