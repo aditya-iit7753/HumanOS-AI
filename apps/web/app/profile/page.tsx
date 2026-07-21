@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { UserButton, UserProfile } from "@clerk/nextjs";
-import { ArrowLeft, CreditCard, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +26,6 @@ export default function ProfilePage() {
           </div>
         </header>
         <section className="rounded-[1.5rem] border bg-card/65 p-4 shadow-soft backdrop-blur-2xl sm:p-8">
-          {isClerkReady && <div className="mb-5 rounded-lg border bg-background/70 p-4 text-sm leading-6 text-muted-foreground"><p className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-4 w-4 text-primary" /> Payment phone number</p><p className="mt-2">Add and verify your mobile number in your profile. Razorpay checkout uses this same logged-in account number and locks it during payment.</p></div>}
           {isClerkReady ? (
             <UserProfile routing="path" path="/profile" />
           ) : (
