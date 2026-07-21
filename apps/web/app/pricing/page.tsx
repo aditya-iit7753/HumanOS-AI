@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSafeAuth } from "@/components/clerk-safe";
 import { ArrowRight, Check, ChevronLeft, Loader2, LockKeyhole, Moon, Sparkles, Sun } from "lucide-react";
@@ -13,6 +13,11 @@ import { cn } from "@/lib/utils";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type PlanId = "free" | "starter" | "pro" | "premium" | "enterprise";
+type SubscriptionResponse = {
+  plan: PlanId;
+  status: string;
+};
+
 type CheckoutResponse = {
   provider: "razorpay" | "stripe";
   url?: string | null;
@@ -47,6 +52,9 @@ declare global {
     Razorpay?: new (options: RazorpayOptions) => { open: () => void };
   }
 }
+
+const paidStatuses = new Set(["active", "trialing"]);
+const planRank: Record<PlanId, number> = { free: 0, starter: 1, pro: 2, premium: 3, enterprise: 4 };
 
 const rows = [
   ["Chat limit", "chat"],
@@ -143,8 +151,39 @@ export default function PricingPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const { getToken, isSignedIn } = useSafeAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSubscription() {
+      if (!isSignedIn) {
+        setSubscription(null);
+        return;
+      }
+      setIsSubscriptionLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const response = await fetch(`${API_URL}/billing/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as SubscriptionResponse;
+        if (!cancelled) setSubscription(data);
+      } finally {
+        if (!cancelled) setIsSubscriptionLoading(false);
+      }
+    }
+    void loadSubscription();
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, isSignedIn]);
+
+  const activePlan = subscription && paidStatuses.has(subscription.status) ? subscription.plan : "free";
   async function startCheckout(plan: PlanId) {
     setError("");
     if (plan === "free") {
@@ -195,7 +234,9 @@ export default function PricingPage() {
                 const body = await verifyResponse.json().catch(() => ({ detail: "Payment succeeded but plan activation failed" }));
                 throw new Error(body.detail ?? "Payment succeeded but plan activation failed");
               }
-              window.location.href = `/settings?billing=success&plan=${encodeURIComponent(plan)}`;
+              setSubscription((await verifyResponse.json()) as SubscriptionResponse);
+              setLoadingPlan(null);
+              window.location.href = `/pricing?billing=success&plan=${encodeURIComponent(plan)}`;
             } catch (verifyError) {
               setError(verifyError instanceof Error ? verifyError.message : "Payment succeeded but plan activation failed");
               setLoadingPlan(null);
@@ -239,7 +280,7 @@ export default function PricingPage() {
         </div>
 
         <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} loading={loadingPlan === plan.id} onSelect={() => void startCheckout(plan.id)} />)}
+          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} activePlan={activePlan} isSubscriptionLoading={isSubscriptionLoading} loading={loadingPlan === plan.id} onSelect={() => void startCheckout(plan.id)} />)}
         </div>
 
         <Card className="mx-auto mt-8 max-w-7xl bg-card/70 backdrop-blur-2xl">
@@ -256,11 +297,15 @@ export default function PricingPage() {
   );
 }
 
-function PlanCard({ plan, loading, onSelect }: { plan: (typeof plans)[number]; loading: boolean; onSelect: () => void }) {
+function PlanCard({ plan, activePlan, isSubscriptionLoading, loading, onSelect }: { plan: (typeof plans)[number]; activePlan: PlanId; isSubscriptionLoading: boolean; loading: boolean; onSelect: () => void }) {
+  const isActive = plan.id === activePlan;
+  const isIncluded = plan.id !== "enterprise" && planRank[plan.id] < planRank[activePlan];
+  const buttonLabel = isSubscriptionLoading ? "Checking plan" : isActive ? "Active plan" : isIncluded ? "Included in your plan" : plan.cta;
+  const disabled = loading || isActive || isIncluded || isSubscriptionLoading;
   return (
     <Card className={cn("flex h-full flex-col bg-card/70 backdrop-blur-2xl", plan.featured && "border-primary bg-primary/10 ring-1 ring-primary/30")}>
       <CardHeader>
-        <div className="flex items-start justify-between gap-3"><CardTitle>{plan.name}</CardTitle>{plan.featured && <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">Best value</span>}</div>
+        <div className="flex items-start justify-between gap-3"><CardTitle>{plan.name}</CardTitle>{isActive ? <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">Active</span> : plan.featured && <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">Best value</span>}</div>
         <p className="text-sm leading-6 text-muted-foreground">{plan.copy}</p>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
@@ -268,7 +313,7 @@ function PlanCard({ plan, loading, onSelect }: { plan: (typeof plans)[number]; l
         <div className="mt-6 flex-1 space-y-3">
           {rows.map(([label, key]) => <p key={key} className="flex items-start gap-2 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-secondary" /><span><span className="font-medium">{label}:</span> {plan.limits[key]}</span></p>)}
         </div>
-        <Button type="button" className="mt-6" variant={plan.featured ? "default" : "outline"} onClick={onSelect} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{plan.cta}</Button>
+        <Button type="button" className="mt-6" variant={isActive ? "secondary" : plan.featured ? "default" : "outline"} onClick={onSelect} disabled={disabled}>{loading || isSubscriptionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isActive || isIncluded ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}{buttonLabel}</Button>
       </CardContent>
     </Card>
   );
