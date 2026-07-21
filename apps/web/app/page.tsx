@@ -57,7 +57,7 @@ const pricing = [
   },
   {
     name: "Pro",
-    price: "Rs. 499",
+    price: "Rs. 249",
     period: "/month",
     copy: "For students, builders, and focused career growth.",
     featured: true,
@@ -65,7 +65,7 @@ const pricing = [
   },
   {
     name: "Premium",
-    price: "Rs. 999",
+    price: "Rs. 299",
     period: "/month",
     copy: "For power users running life, study, work, and documents in HumanOS.",
     featured: false,
