@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
 
 from app import models as db_models
 from app import schemas as api_schemas
-from app.billing import create_billing_portal_session, create_checkout_session, ensure_agent_access, ensure_career_access, ensure_limit, handle_checkout_completed, subscription_payload, sync_razorpay_subscription, sync_stripe_subscription, usage_payload, verify_razorpay_webhook_signature
+from app.billing import create_billing_portal_session, create_checkout_session, ensure_agent_access, ensure_career_access, ensure_limit, handle_checkout_completed, subscription_payload, sync_razorpay_subscription, sync_stripe_subscription, usage_payload, verify_razorpay_checkout, verify_razorpay_webhook_signature
 from app.ai import build_context, generate_agent_action_plan, generate_answer, generate_career_copilot, generate_daily_schedule, generate_evening_review, generate_goal_roadmap, generate_productivity_result, generate_research_result, generate_study_result, stream_answer, suggest_tasks
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -177,6 +177,11 @@ def get_usage(user: User = Depends(get_current_clerk_user), db: Session = Depend
 @app.post("/billing/checkout", response_model=api_schemas.BillingCheckoutResponse)
 def billing_checkout(payload: api_schemas.BillingCheckoutRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
     return create_checkout_session(db, user, payload.plan)
+
+
+@app.post("/billing/razorpay/verify", response_model=api_schemas.SubscriptionRead)
+def verify_razorpay_payment(payload: api_schemas.RazorpayVerifyRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    return verify_razorpay_checkout(db, user, payload.model_dump())
 
 
 @app.post("/billing/portal", response_model=api_schemas.BillingPortalResponse)

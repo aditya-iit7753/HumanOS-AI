@@ -23,6 +23,12 @@ type CheckoutResponse = {
   email?: string | null;
 };
 
+type RazorpaySuccessResponse = {
+  razorpay_payment_id: string;
+  razorpay_subscription_id: string;
+  razorpay_signature: string;
+};
+
 type RazorpayOptions = {
   key: string;
   subscription_id: string;
@@ -31,7 +37,8 @@ type RazorpayOptions = {
   prefill: { name?: string | null; email?: string | null };
   notes: Record<string, string>;
   theme: { color: string };
-  handler: () => void;
+  handler: (response: RazorpaySuccessResponse) => void | Promise<void>;
+  readonly?: { email?: boolean; contact?: boolean };
   modal: { ondismiss: () => void };
 };
 
@@ -174,10 +181,25 @@ export default function PricingPage() {
           name: "HumanOS AI",
           description: `${plan.charAt(0).toUpperCase()}${plan.slice(1)} monthly subscription`,
           prefill: { name: data.name, email: data.email },
-          notes: { plan, product: "HumanOS AI" },
+          notes: { plan, product: "HumanOS AI", email: data.email ?? "" },
+          readonly: { email: Boolean(data.email) },
           theme: { color: "#2563eb" },
-          handler: () => {
-            window.location.href = "/settings?billing=success";
+          handler: async (payment: RazorpaySuccessResponse) => {
+            try {
+              const verifyResponse = await fetch(`${API_URL}/billing/razorpay/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ plan, ...payment }),
+              });
+              if (!verifyResponse.ok) {
+                const body = await verifyResponse.json().catch(() => ({ detail: "Payment succeeded but plan activation failed" }));
+                throw new Error(body.detail ?? "Payment succeeded but plan activation failed");
+              }
+              window.location.href = `/settings?billing=success&plan=${encodeURIComponent(plan)}`;
+            } catch (verifyError) {
+              setError(verifyError instanceof Error ? verifyError.message : "Payment succeeded but plan activation failed");
+              setLoadingPlan(null);
+            }
           },
           modal: {
             ondismiss: () => setLoadingPlan(null),

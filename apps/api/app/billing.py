@@ -350,6 +350,48 @@ def sync_razorpay_subscription(db: Session, event: dict[str, Any]) -> None:
     db.commit()
 
 
+def verify_razorpay_checkout(db: Session, user: User, data: dict[str, Any]) -> dict[str, Any]:
+    settings = get_settings()
+    if not settings.razorpay_key_secret:
+        raise HTTPException(status_code=500, detail="Razorpay is not configured")
+
+    subscription = get_or_create_subscription(db, user)
+    server_subscription_id = subscription.razorpay_subscription_id
+    returned_subscription_id = str(data.get("razorpay_subscription_id") or "")
+    payment_id = str(data.get("razorpay_payment_id") or "")
+    signature = str(data.get("razorpay_signature") or "")
+    requested_plan = str(data.get("plan") or subscription.plan or BillingPlan.free.value)
+
+    if not server_subscription_id or returned_subscription_id != server_subscription_id:
+        raise HTTPException(status_code=400, detail="Payment does not belong to the current user subscription")
+    if requested_plan != subscription.plan:
+        raise HTTPException(status_code=400, detail="Payment plan does not match the current checkout session")
+
+    expected = hmac.new(
+        settings.razorpay_key_secret.encode("utf-8"),
+        f"{server_subscription_id}|{payment_id}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(status_code=400, detail="Invalid Razorpay payment signature")
+
+    subscription.status = SubscriptionStatus.active.value
+    subscription.razorpay_subscription_id = server_subscription_id
+    subscription.meta = {
+        **(subscription.meta or {}),
+        "provider": "razorpay",
+        "latest_checkout_verification": {
+            "razorpay_payment_id": payment_id,
+            "razorpay_subscription_id": server_subscription_id,
+            "plan": requested_plan,
+            "verified_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+    db.commit()
+    db.refresh(subscription)
+    return subscription_payload(db, user)
+
+
 def sync_stripe_subscription(db: Session, data: dict[str, Any]) -> None:
     customer_id = data.get("customer")
     subscription_id = data.get("id")

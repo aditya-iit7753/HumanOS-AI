@@ -566,6 +566,13 @@ class BillingCheckoutResponse(BaseModel):
     email: EmailStr | None = None
 
 
+class RazorpayVerifyRequest(BaseModel):
+    plan: str = Field(pattern="^(starter|pro|premium|enterprise)$")
+    razorpay_payment_id: str = Field(min_length=1)
+    razorpay_subscription_id: str = Field(min_length=1)
+    razorpay_signature: str = Field(min_length=1)
+
+
 class BillingPortalResponse(BaseModel):
     url: str
 
