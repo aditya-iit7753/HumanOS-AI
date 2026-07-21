@@ -247,7 +247,7 @@ function Pricing() {
   return (
     <section id="pricing" className="border-y bg-card/35 px-4 py-20 backdrop-blur-xl sm:px-6 lg:px-8">
       <SectionHeader kicker="Pricing" title="Choose the operating system tier that matches your ambition." />
-      <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-5">
         {pricing.map((plan) => <PricingCard key={plan.name} plan={plan} />)}
       </div>
       <div className="mx-auto mt-6 flex max-w-7xl justify-center">

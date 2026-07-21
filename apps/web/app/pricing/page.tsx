@@ -212,6 +212,7 @@ export default function PricingPage() {
           <p className="text-sm font-semibold text-primary">Pricing</p>
           <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Simple plans for your personal AI operating system.</h1>
           <p className="mt-5 text-lg leading-8 text-muted-foreground">Upgrade as your chat, memory, documents, agents, and career workflows grow.</p>
+          <p className="mt-3 text-sm font-medium text-secondary">Secure monthly subscriptions powered by Razorpay.</p>
           {error && <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
         </div>
 
