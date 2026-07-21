@@ -156,6 +156,7 @@ export default function PricingPage() {
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [needsPhone, setNeedsPhone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +191,7 @@ export default function PricingPage() {
 
   async function startCheckout(plan: PlanId) {
     setError("");
+    setNeedsPhone(false);
     if (plan === "free") {
       window.location.href = isSignedIn ? "/dashboard" : "/sign-up";
       return;
@@ -204,7 +206,8 @@ export default function PricingPage() {
       return;
     }
     if (!checkoutPhone) {
-      setError("Please add a phone number to your HumanOS AI account before payment. Razorpay checkout will use only that logged-in account phone number.");
+      setNeedsPhone(true);
+      setError("Add a phone number to your HumanOS AI account before payment. Razorpay checkout will use only that logged-in account phone number.");
       return;
     }
     setLoadingPlan(plan);
@@ -284,7 +287,7 @@ export default function PricingPage() {
           <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Simple plans for your personal AI operating system.</h1>
           <p className="mt-5 text-lg leading-8 text-muted-foreground">Upgrade as your chat, memory, documents, agents, and career workflows grow.</p>
           <p className="mt-3 text-sm font-medium text-secondary">Secure monthly subscriptions powered by Razorpay.</p>
-          {error && <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+          {error && <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"><p>{error}</p>{needsPhone && <Button asChild size="sm" className="mt-3"><Link href="/profile">Add phone number</Link></Button>}</div>}
         </div>
 
         <div className="mx-auto mt-10 grid max-w-7xl gap-4 md:grid-cols-2 xl:grid-cols-5">
