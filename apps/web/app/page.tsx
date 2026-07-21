@@ -356,6 +356,8 @@ function Footer() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p>HumanOS AI - personal AI operating system for life and career.</p>
         <div className="flex flex-wrap gap-4">
+          <Link href="/about" className="hover:text-foreground">About</Link>
+          <Link href="/contact" className="hover:text-foreground">Contact</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link href="/terms" className="hover:text-foreground">Terms</Link>
           <Link href="/refund" className="hover:text-foreground">Refunds</Link>
