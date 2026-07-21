@@ -178,10 +178,10 @@ export default function PricingPage() {
         const checkout = new window.Razorpay!({
           key: data.key_id,
           subscription_id: data.subscription_id,
-          name: "HumanOS AI",
+          name: "HumanOSai",
           description: `${plan.charAt(0).toUpperCase()}${plan.slice(1)} monthly subscription`,
           prefill: { name: data.name, email: data.email },
-          notes: { plan, product: "HumanOS AI", email: data.email ?? "" },
+          notes: { plan, product: "HumanOSai", email: data.email ?? "" },
           readonly: { email: Boolean(data.email) },
           theme: { color: "#2563eb" },
           handler: async (payment: RazorpaySuccessResponse) => {
