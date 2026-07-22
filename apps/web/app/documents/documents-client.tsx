@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
+import { UpgradeNotice } from "@/components/upgrade-notice";
 import { useTheme } from "next-themes";
 import {
   ArrowRight,
@@ -248,7 +249,7 @@ function AuthenticatedDocumentsClient({ user }: { user: AppUser }) {
         <div className="mx-auto grid w-full max-w-7xl flex-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
           <section className="flex flex-col gap-4">
             <UploadPanel isUploading={isUploading} onUpload={uploadDocument} />
-            {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+            {error && <UpgradeNotice message={error} />}
             <DocumentWorkspace document={activeDocument} result={result} isThinking={isThinking} question={question} onQuestion={setQuestion} onRun={(action, event) => void runCopilot(action, event)} />
           </section>
           <section className="flex flex-col gap-4">

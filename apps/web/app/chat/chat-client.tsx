@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
+import { UpgradeNotice } from "@/components/upgrade-notice";
 import { useTheme } from "next-themes";
 import {
   ArrowUp,
@@ -262,7 +263,7 @@ function AuthenticatedChatClient({ user }: { user: ChatUser }) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
             <div className="mx-auto flex max-w-3xl flex-col gap-5">
-              {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+              {error && <UpgradeNotice message={error} />}
               {messages.length === 0 ? (
                 <EmptyState user={user} onPrompt={(prompt) => void sendMessage(undefined, prompt)} disabled={false} />
               ) : (

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
+import { UpgradeNotice } from "@/components/upgrade-notice";
 import { useTheme } from "next-themes";
 import {
   ArrowLeft,
@@ -175,7 +176,7 @@ function AuthenticatedCareerClient({ user }: { user: CareerUser }) {
 
         <section className="space-y-4">
           <div className="rounded-[1.5rem] border bg-card/65 p-5 shadow-soft backdrop-blur-2xl sm:p-7"><p className="flex items-center gap-2 text-sm font-semibold text-primary"><Sparkles className="h-4 w-4" />ATS resume builder</p><h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Generate a clean one-page resume for {targetRole}.</h1></div>
-          {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+          {error && <UpgradeNotice message={error} />}
 
           <Card className="bg-card/70 backdrop-blur-2xl"><CardHeader><CardTitle className="text-base">Resume inputs</CardTitle></CardHeader><CardContent className="grid gap-3"><div className="grid gap-3 md:grid-cols-2"><Input value={resumeForm.name} onChange={(event) => updateResumeForm("name", event.target.value)} placeholder="Full name" /><Input value={resumeForm.contact} onChange={(event) => updateResumeForm("contact", event.target.value)} placeholder="Email | Phone | LinkedIn | GitHub" /></div><Input value={resumeForm.headline} onChange={(event) => updateResumeForm("headline", event.target.value)} placeholder="Headline / target title" /><Textarea value={resumeForm.summary} onChange={(event) => updateResumeForm("summary", event.target.value)} placeholder="Professional summary" className="min-h-20" /><Textarea value={resumeForm.education} onChange={(event) => updateResumeForm("education", event.target.value)} placeholder="Education, one item per line" className="min-h-20" /><Textarea value={resumeForm.skills} onChange={(event) => updateResumeForm("skills", event.target.value)} placeholder="Skills, comma-separated or one per line" className="min-h-20" /><Textarea value={resumeForm.projects} onChange={(event) => updateResumeForm("projects", event.target.value)} placeholder="Projects, one achievement per line" className="min-h-24" /><Textarea value={resumeForm.experience} onChange={(event) => updateResumeForm("experience", event.target.value)} placeholder="Experience, one achievement per line" className="min-h-24" /><Textarea value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Optional job description for ATS targeting" className="min-h-20" /><div className="flex flex-wrap gap-2"><Button onClick={() => void runTool("resume_builder")} disabled={isLoading}>{isLoading && activeTool === "resume_builder" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate ATS resume</Button><Button variant="outline" onClick={exportPdf}><Download className="h-4 w-4" />Export PDF</Button><Button variant="outline" onClick={() => void runTool()} disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Map className="h-4 w-4" />}Run {activeToolLabel}</Button></div></CardContent></Card>
 

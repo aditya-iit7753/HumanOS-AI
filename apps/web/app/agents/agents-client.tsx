@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
+import { UpgradeNotice } from "@/components/upgrade-notice";
 import { useTheme } from "next-themes";
 import { Bot, BriefcaseBusiness, CheckCircle2, ChevronLeft, FileText, GraduationCap, Loader2, Moon, Search, Sparkles, Sun, TimerReset, Zap } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -387,7 +388,7 @@ function AuthenticatedAgents({ user, initialAgentType }: { user: AppUser; initia
                       </button>
                     ))}
                   </div>
-                  {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+                  {error && <UpgradeNotice message={error} />}
                   <Button disabled={isRunning || !objective.trim()}>{isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}Run agent</Button>
                 </form>
               </CardContent>
@@ -422,7 +423,7 @@ function ProductivityWorkspace({ agent, context, convertStatus, error, focus, hi
               <Textarea value={focus} onChange={(event) => onFocus(event.target.value)} className="min-h-20" placeholder="What should productivity improve?" />
               <Textarea value={context} onChange={(event) => onContext(event.target.value)} className="min-h-16" placeholder="Optional blockers, energy, schedule constraints, or work context" />
               <select value={timeframe} onChange={(event) => onTimeframe(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="today">Today</option><option value="this week">This week</option><option value="next 7 days">Next 7 days</option></select>
-              {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+              {error && <UpgradeNotice message={error} />}
               <Button disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <TimerReset className="h-4 w-4" />}Analyze productivity</Button>
             </form>
           </CardContent>
@@ -522,7 +523,7 @@ function StudyWorkspace({
                 <select value={level} onChange={(event) => onLevel(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
                 <select value={timeAvailable} onChange={(event) => onTime(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="20 minutes per day">20 minutes per day</option><option value="45 minutes per day">45 minutes per day</option><option value="90 minutes per day">90 minutes per day</option><option value="weekend intensive">Weekend intensive</option></select>
               </div>
-              {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+              {error && <UpgradeNotice message={error} />}
               <Button disabled={isStudying || !topic.trim()}>{isStudying ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}Create study plan</Button>
             </form>
           </CardContent>
@@ -615,7 +616,7 @@ function ResearchWorkspace({
                 <option value="practical">Practical</option>
                 <option value="deep">Deep learning plan</option>
               </select>
-              {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+              {error && <UpgradeNotice message={error} />}
               <Button disabled={isResearching || !topic.trim()}>{isResearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Create research result</Button>
             </form>
           </CardContent>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
+import { UpgradeNotice } from "@/components/upgrade-notice";
 import { useTheme } from "next-themes";
 import {
   ArrowLeft,
@@ -265,7 +266,7 @@ function AuthenticatedMemoryClient({ user }: { user: MemoryUser }) {
             </p>
           </div>
 
-          {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}
+          {error && <UpgradeNotice message={error} />}
 
           {isLoading ? (
             <div className="flex items-center gap-2 rounded-lg border bg-card/70 p-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading memories</div>
