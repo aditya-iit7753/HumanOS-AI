@@ -7,22 +7,18 @@ import {
   AlertCircle,
   Bot,
   Brain,
-  BarChart3,
   BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
   FileText,
-  GraduationCap,
   FolderKanban,
-  Cpu,
   Goal,
   LayoutDashboard,
   Loader2,
   Menu,
   MessageSquareText,
   Moon,
-  Network,
   Search,
   Settings as SettingsIcon,
   Sparkles,
@@ -65,10 +61,6 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", active: true },
   { label: "AI Chat", icon: MessageSquareText, href: "/chat" },
   { label: "Memory", icon: Brain, href: "/memory" },
-  { label: "Memory Graph", icon: Network, href: "/memory-graph" },
-  { label: "Engines", icon: Cpu, href: "/intelligence-engines" },
-  { label: "Demo Mode", icon: GraduationCap, href: "/demo-mode" },
-  { label: "Proof", icon: BarChart3, href: "/analytics-proof" },
   { label: "Tasks", icon: CheckCircle2, href: "/tasks" },
   { label: "Goals", icon: Goal, href: "/goals" },
   { label: "Career", icon: BriefcaseBusiness, href: "/career" },
@@ -98,36 +90,6 @@ const dashboardCards = [
     action: "Review memory",
     href: "/memory",
     tint: "text-secondary",
-  },
-  {
-    id: "memory-graph",
-    title: "Memory Graph",
-    icon: Network,
-    metric: "Context map",
-    status: "Goals, tasks, documents, career plans, and memories are connected.",
-    action: "View graph",
-    href: "/memory-graph",
-    tint: "text-primary",
-  },
-  {
-    id: "engines",
-    title: "Intelligence Engines",
-    icon: Cpu,
-    metric: "6 engines",
-    status: "Memory, career, document, productivity, study, and research engines are packaged.",
-    action: "View engines",
-    href: "/intelligence-engines",
-    tint: "text-secondary",
-  },
-  {
-    id: "proof",
-    title: "Proof Dashboard",
-    icon: BarChart3,
-    metric: "Buyer proof",
-    status: "Usage counts and screenshot checklist for brokers, buyers, and marketplaces.",
-    action: "Open proof",
-    href: "/analytics-proof",
-    tint: "text-accent",
   },
   {
     id: "tasks",
@@ -544,3 +506,10 @@ function TaskSummaryPanel({ summary, isLoading }: { summary: { open: number; don
     </Card>
   );
 }
+
+
+
+
+
+
+
