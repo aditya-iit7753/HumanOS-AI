@@ -90,7 +90,7 @@ export default function DemoModePage() {
 
         <section className="mt-10 rounded-[1.5rem] border bg-card/65 p-6 shadow-soft backdrop-blur-2xl sm:p-8">
           <p className="text-sm font-semibold text-primary">How to use this in a buyer demo</p>
-          <p className="mt-3 text-lg leading-8 text-muted-foreground">Open this page, select Student or Job seeker, then show how HumanOS connects memory, documents, career planning, goals, and daily productivity into one target-customer workflow. This is the fastest way to explain the product's market use case.</p>
+          <p className="mt-3 text-lg leading-8 text-muted-foreground">Open this page, select Student or Job seeker, then show how HumanOS connects memory, documents, career planning, goals, and daily productivity into one target-customer workflow. This is the fastest way to explain the product&apos;s market use case.</p>
         </section>
       </div>
     </main>
