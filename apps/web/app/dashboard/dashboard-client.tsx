@@ -19,6 +19,7 @@ import {
   Menu,
   MessageSquareText,
   Moon,
+  Network,
   Search,
   Settings as SettingsIcon,
   Sparkles,
@@ -61,6 +62,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", active: true },
   { label: "AI Chat", icon: MessageSquareText, href: "/chat" },
   { label: "Memory", icon: Brain, href: "/memory" },
+  { label: "Memory Graph", icon: Network, href: "/memory-graph" },
   { label: "Tasks", icon: CheckCircle2, href: "/tasks" },
   { label: "Goals", icon: Goal, href: "/goals" },
   { label: "Career", icon: BriefcaseBusiness, href: "/career" },
@@ -90,6 +92,16 @@ const dashboardCards = [
     action: "Review memory",
     href: "/memory",
     tint: "text-secondary",
+  },
+  {
+    id: "memory-graph",
+    title: "Memory Graph",
+    icon: Network,
+    metric: "Context map",
+    status: "Goals, tasks, documents, career plans, and memories are connected.",
+    action: "View graph",
+    href: "/memory-graph",
+    tint: "text-primary",
   },
   {
     id: "tasks",
@@ -506,6 +518,7 @@ function TaskSummaryPanel({ summary, isLoading }: { summary: { open: number; don
     </Card>
   );
 }
+
 
 
 

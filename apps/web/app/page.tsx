@@ -13,6 +13,7 @@ import {
   FileText,
   Layers3,
   Moon,
+  Network,
   Play,
   ShieldCheck,
   Sparkles,
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const features = [
-  { icon: Brain, title: "Life memory", text: "HumanOS remembers your preferences, commitments, context, and patterns so every answer starts closer to you." },
+  { icon: Network, title: "Memory Graph", text: "HumanOS connects preferences, goals, skills, documents, tasks, and career plans into one reusable AI context layer." },
   { icon: BookOpen, title: "Study system", text: "Turn notes, classes, and research into focused plans, summaries, reviews, and next actions." },
   { icon: Target, title: "Goal engine", text: "Break ambitions into milestones, weekly priorities, and tiny actions that keep momentum visible." },
   { icon: Zap, title: "Productivity flow", text: "Plan your day, triage tasks, draft messages, and recover focus from one calm command center." },
@@ -229,12 +230,12 @@ function MemorySystem() {
     <section className="px-4 pb-20 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl items-center gap-8 rounded-[1.5rem] border bg-card/55 p-6 shadow-soft backdrop-blur-2xl lg:grid-cols-[.85fr_1.15fr] lg:p-10">
         <div>
-          <p className="text-sm font-semibold text-secondary">Memory System</p>
-          <h2 className="mt-3 text-3xl font-semibold sm:text-5xl">An AI that compounds context.</h2>
-          <p className="mt-5 text-lg leading-8 text-muted-foreground">HumanOS stores durable facts, preferences, goals, work history, document insights, and decision patterns so your copilot becomes more useful every week.</p>
+          <p className="text-sm font-semibold text-secondary">HumanOS Memory Graph</p>
+          <h2 className="mt-3 text-3xl font-semibold sm:text-5xl">A proprietary context graph that compounds.</h2>
+          <p className="mt-5 text-lg leading-8 text-muted-foreground">HumanOS stores durable facts, preferences, goals, work history, document insights, and decision patterns, then connects them into a private graph so the copilot becomes more useful every week.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {["Preferences", "Career goals", "Study notes", "Document insights", "Habits", "Open loops"].map((item) => (
+          {["Preferences", "Career goals", "Study notes", "Document insights", "Skills", "Open loops"].map((item) => (
             <div key={item} className="rounded-lg border bg-background/70 p-4 backdrop-blur-xl"><Brain className="mb-3 h-5 w-5 text-primary" /><p className="font-medium">{item}</p></div>
           ))}
         </div>
@@ -368,4 +369,5 @@ function Footer() {
     </footer>
   );
 }
+
 
