@@ -66,6 +66,7 @@ const navItems = [
   { label: "Career", icon: BriefcaseBusiness, href: "/career" },
   { label: "Documents", icon: FileText, href: "/documents" },
   { label: "Agents", icon: Bot, href: "/agents" },
+  { label: "AI Labs", icon: Sparkles, href: "/ai-labs" },
   { label: "Planner", icon: CalendarDays, href: "/planner" },
   { label: "Settings", icon: SettingsIcon, href: "/settings" },
 ];
@@ -140,6 +141,16 @@ const dashboardCards = [
     action: "Launch agent",
     href: "/agents",
     tint: "text-accent",
+  },
+  {
+    id: "ai-labs",
+    title: "AI Labs",
+    icon: Sparkles,
+    metric: "10 future tools",
+    status: "Voice, audio notes, multimodal AI, automations, browser capture, and AI twin previews.",
+    action: "Explore labs",
+    href: "/ai-labs",
+    tint: "text-primary",
   },
   {
     id: "planner",
