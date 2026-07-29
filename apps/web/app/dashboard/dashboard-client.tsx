@@ -292,7 +292,7 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
         />
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-80 max-w-[86vw] border-r bg-card/95 p-4 shadow-soft backdrop-blur-2xl transition-transform",
+            "fixed inset-y-0 left-0 z-50 flex w-80 max-w-[86vw] flex-col border-r bg-card/95 p-4 shadow-soft backdrop-blur-2xl transition-transform",
             sidebarOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -302,13 +302,13 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
               <X className="h-4 w-4" />
             </Button>
           </div>
-          {sidebar}
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">{sidebar}</div>
         </aside>
       </div>
 
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r bg-card/65 p-4 backdrop-blur-2xl lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r bg-card/65 p-4 backdrop-blur-2xl lg:flex">
         <Brand />
-        <div className="mt-8">{sidebar}</div>
+        <div className="mt-8 min-h-0 flex-1 overflow-y-auto pr-1">{sidebar}</div>
       </aside>
 
       <section className="lg:pl-72">
