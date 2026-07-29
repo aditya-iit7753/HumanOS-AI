@@ -283,7 +283,7 @@ function PricingCard({ plan }: { plan: (typeof pricing)[number] }) {
           </div>
         ))}
       </div>
-      <Button asChild className="mt-6 w-full" variant={plan.featured ? "default" : "outline"}><Link href={plan.name === "Enterprise" ? "mailto:sales@humanos.ai?subject=HumanOS%20AI%20Enterprise" : "/pricing"}>{plan.name === "Enterprise" ? "Contact sales" : `Choose ${plan.name}`}</Link></Button>
+      <Button asChild className="mt-6 w-full" variant={plan.featured ? "default" : "outline"}><Link href={plan.name === "Enterprise" ? "/contact" : "/pricing"}>{plan.name === "Enterprise" ? "Contact sales" : `Choose ${plan.name}`}</Link></Button>
     </div>
   );
 }
@@ -363,9 +363,9 @@ function Footer() {
           <Link href="/refund" className="hover:text-foreground">Refunds</Link>
           <Link href="/security" className="hover:text-foreground">Security</Link>
           <Link href="/sell" className="hover:text-foreground">For buyers</Link>
+          <Link href="/advertise" className="hover:text-foreground">Advertise</Link>
         </div>
       </div>
     </footer>
   );
 }
-

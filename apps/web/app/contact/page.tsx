@@ -11,6 +11,7 @@ const topics = [
   ["Account access", "Sign in, signup, Clerk profile, dashboard access, and profile sync problems."],
   ["Product help", "AI chat, memory, tasks, goals, documents, planner, agents, and Career Copilot usage."],
   ["Business enquiries", "Partnerships, custom deployment, white-label use, and enterprise plans."],
+  ["Advertising", "Sponsored placements, campaign enquiries, student offers, career tools, and brand partnerships."],
 ];
 
 export default function ContactPage() {
@@ -25,6 +26,7 @@ export default function ContactPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild><a href={`mailto:${supportEmail}?subject=HumanOS%20AI%20Support`}><Mail className="h-4 w-4" />Email support</a></Button>
             <Button asChild variant="outline"><Link href="/refund">Refund and cancellation policy</Link></Button>
+            <Button asChild variant="outline"><Link href="/advertise">Advertise with us</Link></Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Support email: <a className="font-medium text-foreground underline" href={`mailto:${supportEmail}`}>{supportEmail}</a></p>
         </section>
