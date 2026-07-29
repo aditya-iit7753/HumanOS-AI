@@ -14,18 +14,24 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Flame,
   FolderKanban,
   Goal,
   LayoutDashboard,
   Loader2,
+  Medal,
   Menu,
   MessageSquareText,
   Moon,
   Search,
   Settings as SettingsIcon,
+  Share2,
   ShieldCheck,
   Sparkles,
+  Star,
   Sun,
+  Target,
+  Trophy,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -196,6 +202,47 @@ const dashboardCards = [
   },
 ];
 
+type GamifiedProgress = {
+  score: number;
+  xp: number;
+  streak: number;
+  level: string;
+  challenge: string;
+  focus: number;
+  career: number;
+  study: number;
+  badges: string[];
+};
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function buildGamifiedProgress(stats: DashboardStats, summary: { open: number; done: number; high: number; next: string }, tasks: DashboardTask[]): GamifiedProgress {
+  const completionRate = tasks.length ? summary.done / tasks.length : 0.35;
+  const focus = clampScore((stats.plannerScore || 58) + completionRate * 22 - summary.high * 4);
+  const career = clampScore(36 + stats.goals * 9 + stats.documents * 5 + stats.memories * 0.6);
+  const study = clampScore(42 + stats.memories * 1.2 + stats.documents * 4 + stats.agents * 3);
+  const score = clampScore(focus * 0.38 + career * 0.34 + study * 0.28);
+  const xp = Math.max(120, summary.done * 35 + stats.memories * 12 + stats.goals * 55 + stats.documents * 40 + stats.agents * 25 + score * 6);
+  const streak = Math.max(1, Math.min(21, Math.floor((summary.done + stats.plannerScore / 20 + stats.memories / 8) || 1)));
+  const level = score >= 86 ? "Level 5 - Life Architect" : score >= 72 ? "Level 4 - Momentum Builder" : score >= 55 ? "Level 3 - Focus Builder" : "Level 2 - System Starter";
+  const challenge = summary.high
+    ? "Clear one high-priority task and save the decision as a memory."
+    : stats.documents === 0
+      ? "Upload one document and ask HumanOS for action items."
+      : stats.goals === 0
+        ? "Create one 30-day goal and convert the first milestone into a task."
+        : "Complete one task, update one goal, and ask AI for the next move.";
+  const badges = [
+    stats.memories >= 5 ? "Memory Maker" : "First Memory",
+    summary.done >= 3 ? "Task Finisher" : "Starter Sprint",
+    stats.goals >= 2 ? "Goal Builder" : "Goal Seed",
+    stats.documents >= 1 ? "Doc Explorer" : "Doc Rookie",
+  ];
+  return { score, xp, streak, level, challenge, focus, career, study, badges };
+}
+
 function enrichDashboardCards(cards: typeof dashboardCards, summary: { open: number; done: number; high: number; next: string }, stats: DashboardStats) {
   return cards.map((card) => {
     if (card.id === "tasks") return { ...card, metric: `${summary.open} open`, status: summary.high ? `${summary.high} high-priority tasks need attention.` : "Your task list is calm right now." };
@@ -273,6 +320,7 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
     };
   }, [tasks]);
   const cards = useMemo(() => enrichDashboardCards(dashboardCards, taskSummary, stats), [taskSummary, stats]);
+  const gamifiedProgress = useMemo(() => buildGamifiedProgress(stats, taskSummary, tasks), [stats, taskSummary, tasks]);
   const searchResults = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
     if (!normalized) return [];
@@ -343,6 +391,8 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
 
           {error && <DashboardNotice message={error} />}
 
+          <GamifiedProgressPanel progress={gamifiedProgress} user={user} />
+
           <UsageMeters />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -362,6 +412,106 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
 }
 
 
+function GamifiedProgressPanel({ progress, user }: { progress: GamifiedProgress; user: DashboardUser }) {
+  const [shareLabel, setShareLabel] = useState("Share score");
+
+  async function shareProgress() {
+    const text = `I scored ${progress.score}/100 on HumanOS AI. ${progress.level}. Build your AI life operating system at humanosai.in`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: "My HumanOS AI Score", text, url: "https://www.humanosai.in" });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setShareLabel("Copied");
+        window.setTimeout(() => setShareLabel("Share score"), 1800);
+      }
+    } catch {
+      setShareLabel("Share score");
+    }
+  }
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[.95fr_1.05fr]">
+      <Card className="overflow-hidden bg-card/65 backdrop-blur-2xl animate-soft-in">
+        <CardContent className="grid gap-5 p-5 sm:grid-cols-[auto_1fr] sm:p-6">
+          <div className="relative flex h-36 w-36 items-center justify-center rounded-full border bg-background/70 shadow-soft">
+            <div className="absolute inset-3 rounded-full border border-primary/20" />
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">HumanOS score</p>
+              <p className="mt-1 text-4xl font-semibold">{progress.score}</p>
+              <p className="text-xs text-muted-foreground">/100</p>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-sm font-semibold text-primary"><Trophy className="h-4 w-4" /> {progress.level}</p>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Make progress feel visible, {user.firstName}.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Earn XP by finishing tasks, saving memories, building goals, planning your day, and using copilots.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <MiniStat icon={Star} label="XP" value={progress.xp.toLocaleString()} />
+              <MiniStat icon={Flame} label="Streak" value={`${progress.streak} days`} />
+              <MiniStat icon={Medal} label="Badges" value={String(progress.badges.length)} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/65 backdrop-blur-2xl animate-soft-in">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> Today challenge</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="rounded-lg border bg-background/65 p-4">
+            <p className="text-sm font-semibold">{progress.challenge}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Complete it to raise your score and keep your streak alive.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <ScoreMeter label="Focus" value={progress.focus} />
+            <ScoreMeter label="Career" value={progress.career} />
+            <ScoreMeter label="Study" value={progress.study} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {progress.badges.map((badge) => (
+              <span key={badge} className="rounded-md border bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground">{badge}</span>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild className="flex-1 justify-between">
+              <Link href="/planner">Plan today<ChevronRight className="h-4 w-4" /></Link>
+            </Button>
+            <Button variant="outline" className="flex-1 justify-between bg-background/50" onClick={() => void shareProgress()}>
+              {shareLabel}<Share2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background/65 p-3">
+      <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</p>
+      <p className="mt-2 text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function ScoreMeter({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border bg-background/65 p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted-foreground">{value}%</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
 function DashboardNotice({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 animate-soft-in">
