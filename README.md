@@ -294,6 +294,7 @@ CORS_ORIGIN_REGEX=https://.*\\.vercel\\.app
 CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json
 CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
 CLERK_JWT_AUDIENCE=
+ADMIN_EMAILS=assaditya.iit@gmail.com
 QDRANT_URL=https://your-qdrant-endpoint
 QDRANT_API_KEY=your-qdrant-api-key-if-required
 QDRANT_COLLECTION=humanos_memories
@@ -415,6 +416,7 @@ Backend variables:
 | `CLERK_JWKS_URL` | Yes | Clerk JWKS endpoint for backend token verification. |
 | `CLERK_ISSUER` | Yes | Clerk issuer URL. |
 | `CLERK_JWT_AUDIENCE` | No | Only set if your Clerk JWT template uses an audience. |
+| `ADMIN_EMAILS` | Recommended | Comma-separated owner emails allowed to open `/admin`. |
 | `QDRANT_URL` | Yes | Qdrant Cloud or Railway Qdrant URL. |
 | `QDRANT_API_KEY` | No | Required for Qdrant Cloud/private Qdrant. |
 | `QDRANT_COLLECTION` | Yes | Memory vector collection name. |

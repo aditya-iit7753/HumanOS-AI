@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 try:
     import stripe
@@ -226,6 +226,82 @@ def get_subscription(user: User = Depends(get_current_clerk_user), db: Session =
 def get_usage(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
     return usage_payload(db, user)
 
+
+def _require_admin(user: User) -> None:
+    admin_emails = set(settings.admin_email_list)
+    if user.role in {"admin", "owner"} or user.email.lower() in admin_emails:
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+
+def _count(db: Session, model, *conditions) -> int:
+    query = select(func.count(model.id))
+    if conditions:
+        query = query.where(*conditions)
+    return int(db.scalar(query) or 0)
+
+
+@app.get("/admin/analytics")
+def admin_analytics(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)) -> dict:
+    _require_admin(user)
+    now = datetime.now(timezone.utc)
+    last_7_days = now - timedelta(days=7)
+    last_30_days = now - timedelta(days=30)
+    active_statuses = {"active", "trialing"}
+    plan_prices_inr = {"starter": 149, "pro": 249, "premium": 299, "enterprise": 0}
+
+    subscription_rows = db.execute(select(Subscription.plan, Subscription.status, func.count(Subscription.id)).group_by(Subscription.plan, Subscription.status)).all()
+    subscriptions = [
+        {"plan": plan or "free", "status": status_value or "inactive", "count": int(count or 0)}
+        for plan, status_value, count in subscription_rows
+    ]
+    active_paid_by_plan: dict[str, int] = defaultdict(int)
+    for plan, status_value, count in subscription_rows:
+        if status_value in active_statuses and plan in plan_prices_inr:
+            active_paid_by_plan[str(plan)] += int(count or 0)
+
+    total_mrr_inr = sum(plan_prices_inr.get(plan, 0) * count for plan, count in active_paid_by_plan.items())
+    recent_users = db.scalars(select(User).order_by(User.created_at.desc()).limit(8)).all()
+    average_plan_score = db.scalar(select(func.avg(DailyPlan.score))) or 0
+
+    return {
+        "generated_at": now,
+        "overview": {
+            "total_users": _count(db, User),
+            "new_users_7d": _count(db, User, User.created_at >= last_7_days),
+            "new_users_30d": _count(db, User, User.created_at >= last_30_days),
+            "active_paid_subscriptions": sum(active_paid_by_plan.values()),
+            "estimated_mrr_inr": total_mrr_inr,
+        },
+        "usage": {
+            "conversations": _count(db, Conversation),
+            "messages": _count(db, Message),
+            "memories": _count(db, Memory),
+            "tasks": _count(db, Task),
+            "open_tasks": _count(db, Task, Task.status != TaskStatus.done),
+            "goals": _count(db, Goal),
+            "documents": _count(db, Document),
+            "agents": _count(db, Agent),
+            "daily_plans": _count(db, DailyPlan),
+        },
+        "engagement": {
+            "messages_7d": _count(db, Message, Message.created_at >= last_7_days),
+            "tasks_created_7d": _count(db, Task, Task.created_at >= last_7_days),
+            "documents_uploaded_30d": _count(db, Document, Document.created_at >= last_30_days),
+            "average_planner_score": round(float(average_plan_score), 1),
+        },
+        "subscriptions": subscriptions,
+        "recent_users": [
+            {
+                "id": str(recent_user.id),
+                "email": recent_user.email,
+                "full_name": recent_user.full_name,
+                "role": recent_user.role,
+                "created_at": recent_user.created_at,
+            }
+            for recent_user in recent_users
+        ],
+    }
 
 @app.post("/billing/checkout", response_model=api_schemas.BillingCheckoutResponse)
 def billing_checkout(payload: api_schemas.BillingCheckoutRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     razorpay_plan_pro: str = ""
     razorpay_plan_premium: str = ""
     razorpay_plan_enterprise: str = ""
+    admin_emails: str = ""
     rate_limit_per_minute: int = 120
     auth_rate_limit_per_minute: int = 20
     max_request_bytes: int = 10 * 1024 * 1024
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        return [email.strip().lower() for email in self.admin_emails.split(",") if email.strip()]
 
 
 @lru_cache

@@ -23,6 +23,7 @@ import {
   Moon,
   Search,
   Settings as SettingsIcon,
+  ShieldCheck,
   Sparkles,
   Sun,
   X,
@@ -31,6 +32,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UsageMeters } from "@/components/usage-meters";
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -71,6 +73,7 @@ const navItems = [
   { label: "Agents", icon: Bot, href: "/agents" },
   { label: "AI Labs", icon: Sparkles, href: "/ai-labs" },
   { label: "Planner", icon: CalendarDays, href: "/planner" },
+  { label: "Admin", icon: ShieldCheck, href: "/admin" },
   { label: "Settings", icon: SettingsIcon, href: "/settings" },
 ];
 
@@ -86,6 +89,7 @@ const searchablePages = [
   { title: "Daily Planner", href: "/planner", keywords: "daily plan schedule morning evening productivity score" },
   { title: "Pricing", href: "/pricing", keywords: "plan subscription starter pro premium enterprise payment razorpay" },
   { title: "Settings", href: "/settings", keywords: "profile ai preference theme export delete account api key" },
+  { title: "Admin", href: "/admin", keywords: "admin analytics users revenue mrr usage meters subscriptions" },
   { title: "Contact Support", href: "/contact", keywords: "support help contact sales billing refund enterprise" },
 ];
 
@@ -169,6 +173,16 @@ const dashboardCards = [
     action: "Explore labs",
     href: "/ai-labs",
     tint: "text-primary",
+  },
+  {
+    id: "admin",
+    title: "Admin",
+    icon: ShieldCheck,
+    metric: "Live analytics",
+    status: "Owner-only usage, subscription, revenue, and user growth reporting.",
+    action: "Open admin",
+    href: "/admin",
+    tint: "text-accent",
   },
   {
     id: "planner",
@@ -328,6 +342,8 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
           <Hero user={user} stats={stats} taskSummary={taskSummary} isLoading={isLoading} />
 
           {error && <DashboardNotice message={error} />}
+
+          <UsageMeters />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {cards.map((card) => (

@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Agent, BillingPlan, Conversation, Document, Memory, Message, Subscription, SubscriptionStatus, User
+from app.models import Agent, BillingPlan, Conversation, DailyPlan, Document, Goal, Memory, Message, Subscription, SubscriptionStatus, Task, User
 
 PLAN_LIMITS: dict[str, dict[str, Any]] = {
     BillingPlan.free.value: {
@@ -162,6 +162,12 @@ def usage_count(db: Session, user: User, feature: str) -> int:
         return int(db.scalar(select(func.count(Document.id)).where(Document.user_id == user.id)) or 0)
     if feature == "agents":
         return int(db.scalar(select(func.count(Agent.id)).where(Agent.user_id == user.id)) or 0)
+    if feature == "tasks":
+        return int(db.scalar(select(func.count(Task.id)).where(Task.user_id == user.id)) or 0)
+    if feature == "goals":
+        return int(db.scalar(select(func.count(Goal.id)).where(Goal.user_id == user.id)) or 0)
+    if feature == "daily_plans":
+        return int(db.scalar(select(func.count(DailyPlan.id)).where(DailyPlan.user_id == user.id)) or 0)
     return 0
 
 
@@ -174,6 +180,10 @@ def usage_payload(db: Session, user: User) -> dict[str, Any]:
             "chat_messages": usage_count(db, user, "chat_messages"),
             "memories": usage_count(db, user, "memories"),
             "documents": usage_count(db, user, "documents"),
+            "agents": usage_count(db, user, "agents"),
+            "tasks": usage_count(db, user, "tasks"),
+            "goals": usage_count(db, user, "goals"),
+            "daily_plans": usage_count(db, user, "daily_plans"),
         },
         "limits": limits,
     }
