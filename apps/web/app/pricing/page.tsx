@@ -192,7 +192,7 @@ export default function PricingPage() {
       return;
     }
     if (plan === "enterprise") {
-      window.location.href = "mailto:sales@humanos.ai?subject=HumanOS%20AI%20Enterprise";
+      window.location.href = "/contact";
       return;
     }
     const token = await getToken();

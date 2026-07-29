@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
 import {
@@ -11,6 +12,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Clock,
   FileText,
   FolderKanban,
   Goal,
@@ -33,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+type SearchResult = { title: string; href: string; detail: string; icon: LucideIcon };
 
 type DashboardTask = {
   id: string;
@@ -69,6 +72,21 @@ const navItems = [
   { label: "AI Labs", icon: Sparkles, href: "/ai-labs" },
   { label: "Planner", icon: CalendarDays, href: "/planner" },
   { label: "Settings", icon: SettingsIcon, href: "/settings" },
+];
+
+const searchablePages = [
+  { title: "AI Chat", href: "/chat", keywords: "chat assistant conversation history streaming ai ask question" },
+  { title: "Memory", href: "/memory", keywords: "memory facts preferences skills projects important context" },
+  { title: "Tasks", href: "/tasks", keywords: "task create edit delete complete priority due date" },
+  { title: "Goals", href: "/goals", keywords: "goal milestones roadmap progress timeline ai engineer" },
+  { title: "Career Copilot", href: "/career", keywords: "resume ats career job interview skill gap roadmap" },
+  { title: "Document Copilot", href: "/documents", keywords: "pdf docx txt upload summarize notes action items question" },
+  { title: "Agents", href: "/agents", keywords: "career study research productivity document agent action plan" },
+  { title: "AI Labs", href: "/ai-labs", keywords: "voice meeting lecture multimodal automation extension whatsapp future" },
+  { title: "Daily Planner", href: "/planner", keywords: "daily plan schedule morning evening productivity score" },
+  { title: "Pricing", href: "/pricing", keywords: "plan subscription starter pro premium enterprise payment razorpay" },
+  { title: "Settings", href: "/settings", keywords: "profile ai preference theme export delete account api key" },
+  { title: "Contact Support", href: "/contact", keywords: "support help contact sales billing refund enterprise" },
 ];
 
 const dashboardCards = [
@@ -182,6 +200,7 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
   const [stats, setStats] = useState<DashboardStats>({ memories: 0, goals: 0, documents: 0, agents: 0, plannerScore: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -240,6 +259,25 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
     };
   }, [tasks]);
   const cards = useMemo(() => enrichDashboardCards(dashboardCards, taskSummary, stats), [taskSummary, stats]);
+  const searchResults = useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase();
+    if (!normalized) return [];
+    const pageResults = searchablePages
+      .filter((item) => `${item.title} ${item.keywords}`.toLowerCase().includes(normalized))
+      .map((item) => ({ title: item.title, href: item.href, detail: "Open page", icon: Search }));
+    const cardResults = cards
+      .filter((card) => `${card.title} ${card.metric} ${card.status} ${card.action}`.toLowerCase().includes(normalized))
+      .map((card) => ({ title: card.title, href: card.href ?? "/dashboard", detail: card.status, icon: card.icon }));
+    const taskResults = tasks
+      .filter((task) => `${task.title} ${task.priority} ${task.status} ${task.goal_title ?? ""}`.toLowerCase().includes(normalized))
+      .slice(0, 4)
+      .map((task) => ({ title: task.title, href: "/tasks", detail: `${task.priority} priority task`, icon: CheckCircle2 }));
+    const byResult = new Map<string, SearchResult>();
+    [...pageResults, ...cardResults, ...taskResults].forEach((result) => {
+      if (!byResult.has(`${result.href}-${result.title}`)) byResult.set(`${result.href}-${result.title}`, result);
+    });
+    return Array.from(byResult.values()).slice(0, 8);
+  }, [cards, searchQuery, tasks]);
   const sidebar = <Sidebar onNavigate={() => setSidebarOpen(false)} />;
 
   return (
@@ -280,6 +318,10 @@ export function DashboardClient({ user, clerkReady }: { user: DashboardUser; cle
           onToggleTheme={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           isDark={resolvedTheme === "dark"}
           clerkReady={clerkReady}
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          onSearchChange={setSearchQuery}
+          onClearSearch={() => setSearchQuery("")}
         />
 
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
@@ -359,12 +401,20 @@ function TopBar({
   onToggleTheme,
   isDark,
   clerkReady,
+  searchQuery,
+  searchResults,
+  onSearchChange,
+  onClearSearch,
 }: {
   user: DashboardUser;
   onOpenSidebar: () => void;
   onToggleTheme: () => void;
   isDark: boolean;
   clerkReady: boolean;
+  searchQuery: string;
+  searchResults: SearchResult[];
+  onSearchChange: (value: string) => void;
+  onClearSearch: () => void;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b bg-background/70 backdrop-blur-2xl">
@@ -373,10 +423,7 @@ function TopBar({
           <Button variant="ghost" size="icon" className="lg:hidden" title="Open navigation" onClick={onOpenSidebar}>
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="hidden items-center gap-2 rounded-md border bg-card/70 px-3 py-2 text-sm text-muted-foreground shadow-soft sm:flex">
-            <Search className="h-4 w-4" />
-            Search HumanOS
-          </div>
+          <GlobalSearch query={searchQuery} results={searchResults} onChange={onSearchChange} onClear={onClearSearch} />
           <div className="sm:hidden">
             <p className="text-sm font-semibold">Dashboard</p>
             <p className="text-xs text-muted-foreground">Welcome, {user.firstName}</p>
@@ -394,6 +441,58 @@ function TopBar({
         </div>
       </div>
     </header>
+  );
+}
+
+
+function GlobalSearch({
+  query,
+  results,
+  onChange,
+  onClear,
+}: {
+  query: string;
+  results: SearchResult[];
+  onChange: (value: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="relative hidden w-[min(42vw,420px)] sm:block">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        value={query}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search HumanOS"
+        className="h-10 w-full rounded-md border bg-card/70 px-9 text-sm outline-none shadow-soft transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+      />
+      {query && (
+        <button type="button" onClick={onClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground" title="Clear search">
+          <X className="h-4 w-4" />
+        </button>
+      )}
+      {query && (
+        <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-lg border bg-card shadow-soft backdrop-blur-2xl">
+          {results.length ? (
+            <div className="max-h-96 overflow-auto p-2">
+              {results.map((result) => (
+                <Link key={`${result.href}-${result.title}`} href={result.href} onClick={onClear} className="flex items-start gap-3 rounded-md px-3 py-2 text-sm transition hover:bg-muted">
+                  <result.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block font-medium">{result.title}</span>
+                    <span className="line-clamp-1 text-xs text-muted-foreground">{result.detail}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              No results found. Try chat, tasks, resume, documents, pricing, or settings.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -517,10 +616,3 @@ function TaskSummaryPanel({ summary, isLoading }: { summary: { open: number; don
     </Card>
   );
 }
-
-
-
-
-
-
-
