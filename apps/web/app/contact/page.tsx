@@ -4,7 +4,7 @@ import { HelpCircle, Mail, MessageSquare, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const supportEmail = "assaditya.iit@gmail.com";
+const supportEmail = "humaosai@gmail.com";
 
 const topics = [
   ["Billing and subscriptions", "Payment status, active plan issues, Razorpay receipts, renewals, and cancellation questions."],

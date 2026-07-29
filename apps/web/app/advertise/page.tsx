@@ -1,10 +1,10 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, CheckCircle2, FileText, Megaphone, MessageSquare, ShieldCheck, Sparkles, Target, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const supportEmail = "assaditya.iit@gmail.com";
+const supportEmail = "humaosai@gmail.com";
 
 const placements = [
   {

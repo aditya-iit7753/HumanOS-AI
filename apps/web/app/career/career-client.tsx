@@ -192,7 +192,7 @@ function AuthenticatedCareerClient({ user }: { user: CareerUser }) {
 
 function buildLocalPreview(form: ResumeForm, role: string) {
   const name = form.name || "YOUR NAME";
-  const contact = form.contact || "email@example.com | LinkedIn | GitHub | Portfolio";
+  const contact = form.contact || "humaosai@gmail.com | LinkedIn | GitHub | Portfolio";
   return `${name.toUpperCase()}\n${form.headline || role}\n${contact}\n\nSUMMARY\n${form.summary || `Targeting ${role} roles with hands-on software, data, and AI project experience.`}\n\nSKILLS\n${form.skills || "Python, TypeScript, SQL, APIs, Machine Learning, LLMs, RAG, Docker"}\n\nEXPERIENCE\n${form.experience || "- Add 2-4 quantified achievements with action verbs and measurable impact."}\n\nPROJECTS\n${form.projects || "- Add AI/ML projects with stack, outcome, and deployed links."}\n\nEDUCATION\n${form.education || "- Degree, institution, graduation year, relevant coursework."}`;
 }
 

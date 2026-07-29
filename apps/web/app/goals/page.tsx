@@ -14,7 +14,7 @@ export default async function GoalsPage() {
   return (
     <GoalsClient
       clerkReady={isClerkReady}
-      user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai" }}
+      user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com" }}
     />
   );
 }

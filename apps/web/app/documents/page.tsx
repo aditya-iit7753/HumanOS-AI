@@ -17,7 +17,7 @@ export default async function DocumentsPage() {
       user={{
         firstName: user?.firstName ?? "Builder",
         fullName: user?.fullName ?? "HumanOS User",
-        email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai",
+        email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com",
       }}
     />
   );

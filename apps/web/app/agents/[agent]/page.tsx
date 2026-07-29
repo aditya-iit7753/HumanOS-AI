@@ -15,5 +15,5 @@ export default async function AgentPage({ params }: { params: Promise<{ agent: s
   if (!agentTypes.has(agent)) notFound();
   const isClerkReady = clerkReady();
   const user = isClerkReady ? await currentUser() : null;
-  return <AgentsClient activeAgentType={agent} clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai" }} />;
+  return <AgentsClient activeAgentType={agent} clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com" }} />;
 }

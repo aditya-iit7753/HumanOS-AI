@@ -218,7 +218,7 @@ def generate_career_copilot(tool: str, context: dict) -> dict:
     def _ats_resume() -> str:
         name = resume_data.get("name") or "Your Name"
         headline = resume_data.get("headline") or target_role
-        contact = resume_data.get("contact") or "email@example.com | LinkedIn | GitHub | Portfolio"
+        contact = resume_data.get("contact") or "humaosai@gmail.com | LinkedIn | GitHub | Portfolio"
         education = _clean_lines(resume_data.get("education"))
         skills_input = _clean_lines(resume_data.get("skills")) or skills
         projects_input = _clean_lines(resume_data.get("projects"))

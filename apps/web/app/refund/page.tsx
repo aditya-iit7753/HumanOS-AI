@@ -4,7 +4,7 @@ import { CreditCard, Mail, RotateCcw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const supportEmail = "assaditya.iit@gmail.com";
+const supportEmail = "humaosai@gmail.com";
 
 const items = [
   ["Monthly subscriptions", "HumanOS AI paid plans are monthly subscriptions. Users can continue using paid features until the end of the active billing period after cancellation."],

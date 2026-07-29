@@ -1,4 +1,4 @@
-﻿import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 
 import { ChatClient } from "./chat-client";
 
@@ -17,7 +17,7 @@ export default async function ChatPage() {
       user={{
         firstName: user?.firstName ?? "Builder",
         fullName: user?.fullName ?? "HumanOS User",
-        email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai",
+        email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com",
       }}
     />
   );

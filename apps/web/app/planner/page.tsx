@@ -10,5 +10,5 @@ function clerkReady() {
 export default async function PlannerPage() {
   const isClerkReady = clerkReady();
   const user = isClerkReady ? await currentUser() : null;
-  return <PlannerClient clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai" }} />;
+  return <PlannerClient clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com" }} />;
 }

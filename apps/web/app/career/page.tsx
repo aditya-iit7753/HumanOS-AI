@@ -10,5 +10,5 @@ function clerkReady() {
 export default async function CareerPage() {
   const isClerkReady = clerkReady();
   const user = isClerkReady ? await currentUser() : null;
-  return <CareerClient clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "workspace@humanos.ai" }} />;
+  return <CareerClient clerkReady={isClerkReady} user={{ firstName: user?.firstName ?? "Builder", fullName: user?.fullName ?? "HumanOS User", email: user?.primaryEmailAddress?.emailAddress ?? "humaosai@gmail.com" }} />;
 }
