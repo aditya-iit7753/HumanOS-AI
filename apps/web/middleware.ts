@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/profile(.*)", "/chat(.*)", "/memory(.*)", "/tasks(.*)", "/goals(.*)", "/career(.*)", "/documents(.*)", "/planner(.*)", "/agents(.*)", "/settings(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)", "/profile(.*)", "/chat(.*)", "/memory(.*)", "/tasks(.*)", "/goals(.*)", "/career(.*)", "/documents(.*)", "/planner(.*)", "/agents(.*)", "/settings(.*)"]);
 
 function clerkReady() {
   const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;

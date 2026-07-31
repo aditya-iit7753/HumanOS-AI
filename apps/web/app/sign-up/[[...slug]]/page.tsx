@@ -1,4 +1,4 @@
-﻿import { SignUp } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ export default function Page() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" forceRedirectUrl="/dashboard" />
+      <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" forceRedirectUrl="/onboarding" />
     </main>
   );
 }

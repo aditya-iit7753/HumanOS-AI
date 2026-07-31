@@ -31,6 +31,7 @@ type Engagement = {
 
 type SubscriptionRow = { plan: string; status: string; count: number };
 type RecentUser = { id: string; email: string; full_name: string; role: string; created_at: string };
+type ActivityLog = { id: string; user_id: string | null; action: string; resource: string; meta: Record<string, unknown>; created_at: string };
 
 type AdminAnalytics = {
   generated_at: string;
@@ -38,6 +39,7 @@ type AdminAnalytics = {
   usage: Usage;
   engagement: Engagement;
   subscriptions: SubscriptionRow[];
+  recent_activity: ActivityLog[];
   recent_users: RecentUser[];
 };
 
@@ -180,6 +182,20 @@ export default function AdminPage() {
 
               <UsageMeters />
             </section>
+            <Card className="bg-card/65 backdrop-blur-2xl">
+              <CardHeader><CardTitle>Recent activity</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {data.recent_activity.length ? data.recent_activity.map((activity) => (
+                  <div key={activity.id} className="flex flex-col gap-1 rounded-lg border bg-background/65 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-semibold">{activity.action}</p>
+                      <p className="text-xs text-muted-foreground">{activity.resource || "app"}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{new Date(activity.created_at).toLocaleString()}</span>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">No tracked activity yet.</p>}
+              </CardContent>
+            </Card>
           </>
         )}
       </section>

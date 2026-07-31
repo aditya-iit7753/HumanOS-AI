@@ -25,7 +25,7 @@ from app.config import get_settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.document_copilot import extract_text, generate_document_copilot, upsert_document_embeddings
 from app.memory import auto_save_memories_from_chat, delete_memory_vector, retrieve_relevant_memories, save_memory, upsert_memory_vector
-from app.models import Agent, AgentStatus, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
+from app.models import Agent, AgentStatus, AuditLog, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
 from app.schemas import (
     CareerProfileRead,
     CareerProfileUpsert,
@@ -147,6 +147,10 @@ def startup() -> None:
             connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(128)"))
             connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS razorpay_plan_id VARCHAR(128)"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_razorpay_subscription_id ON subscriptions (razorpay_subscription_id) WHERE razorpay_subscription_id IS NOT NULL"))
+            connection.execute(text("CREATE TABLE IF NOT EXISTS audit_logs (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE SET NULL, action VARCHAR(120) NOT NULL, resource VARCHAR(120) NOT NULL DEFAULT '', ip_address VARCHAR(80) NOT NULL DEFAULT '', user_agent TEXT NOT NULL DEFAULT '', meta JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs (user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_action ON audit_logs (action)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs (created_at)"))
     except Exception as exc:
         logger.exception("Database startup setup failed; healthcheck remains available: %s", exc)
 
@@ -180,6 +184,29 @@ def _mask_keys(keys: dict | None) -> dict[str, str]:
 
 def _memory_enabled(user: User, db: Session) -> bool:
     return _get_or_create_settings(user, db).memory_enabled
+
+
+def _write_audit_log(db: Session, user: User | None, action: str, resource: str = "", request: Request | None = None, meta: dict | None = None) -> None:
+    log = AuditLog(
+        user_id=user.id if user else None,
+        action=action[:120],
+        resource=resource[:120],
+        ip_address=_client_key(request)[:80] if request else "",
+        user_agent=(request.headers.get("user-agent", "")[:1000] if request else ""),
+        meta=meta or {},
+    )
+    db.add(log)
+
+
+def _serialize_audit_log(log: AuditLog) -> dict:
+    return {
+        "id": str(log.id),
+        "user_id": str(log.user_id) if log.user_id else None,
+        "action": log.action,
+        "resource": log.resource,
+        "meta": log.meta or {},
+        "created_at": log.created_at,
+    }
 
 
 @app.get("/health")
@@ -227,6 +254,22 @@ def get_usage(user: User = Depends(get_current_clerk_user), db: Session = Depend
     return usage_payload(db, user)
 
 
+@app.post("/analytics/events")
+def track_event(payload: dict, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)) -> dict:
+    action = str(payload.get("action") or "event")
+    resource = str(payload.get("resource") or "app")
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {"payload": payload}
+    _write_audit_log(db, user, action, resource, request, meta)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/activity")
+def user_activity(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)) -> dict:
+    logs = db.scalars(select(AuditLog).where(AuditLog.user_id == user.id).order_by(AuditLog.created_at.desc()).limit(30)).all()
+    return {"activity": [_serialize_audit_log(log) for log in logs]}
+
+
 def _require_admin(user: User) -> None:
     admin_emails = set(settings.admin_email_list)
     if user.role in {"admin", "owner"} or user.email.lower() in admin_emails:
@@ -262,6 +305,7 @@ def admin_analytics(user: User = Depends(get_current_clerk_user), db: Session = 
 
     total_mrr_inr = sum(plan_prices_inr.get(plan, 0) * count for plan, count in active_paid_by_plan.items())
     recent_users = db.scalars(select(User).order_by(User.created_at.desc()).limit(8)).all()
+    recent_activity = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(12)).all()
     average_plan_score = db.scalar(select(func.avg(DailyPlan.score))) or 0
 
     return {
@@ -291,6 +335,7 @@ def admin_analytics(user: User = Depends(get_current_clerk_user), db: Session = 
             "average_planner_score": round(float(average_plan_score), 1),
         },
         "subscriptions": subscriptions,
+        "recent_activity": [_serialize_audit_log(log) for log in recent_activity],
         "recent_users": [
             {
                 "id": str(recent_user.id),
@@ -304,8 +349,11 @@ def admin_analytics(user: User = Depends(get_current_clerk_user), db: Session = 
     }
 
 @app.post("/billing/checkout", response_model=api_schemas.BillingCheckoutResponse)
-def billing_checkout(payload: api_schemas.BillingCheckoutRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    return create_checkout_session(db, user, payload.plan)
+def billing_checkout(payload: api_schemas.BillingCheckoutRequest, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    result = create_checkout_session(db, user, payload.plan)
+    _write_audit_log(db, user, "billing.checkout_started", "billing", request, {"plan": payload.plan, "provider": result.get("provider")})
+    db.commit()
+    return result
 
 
 @app.post("/billing/razorpay/verify", response_model=api_schemas.SubscriptionRead)
@@ -402,6 +450,8 @@ def sync_clerk_profile(
 
         db.commit()
         db.refresh(user)
+        _write_audit_log(db, user, "auth.profile_sync", "user", request, {"email": user.email})
+        db.commit()
         return user
     except HTTPException:
         raise
@@ -427,7 +477,7 @@ def get_user_settings(user: User = Depends(get_current_clerk_user), db: Session 
 
 
 @app.put("/settings", response_model=api_schemas.UserSettingsRead)
-def update_user_settings(payload: api_schemas.UserSettingsUpdate, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+def update_user_settings(payload: api_schemas.UserSettingsUpdate, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
     settings_row = _get_or_create_settings(user, db)
     values = payload.model_dump(exclude_unset=True)
     if values.get("full_name") is not None:
@@ -445,6 +495,7 @@ def update_user_settings(payload: api_schemas.UserSettingsUpdate, user: User = D
             if value:
                 updated[key] = value
         settings_row.dev_api_keys = updated
+    _write_audit_log(db, user, "settings.updated", "settings", request, {"fields": sorted(values.keys())})
     db.commit()
     db.refresh(user)
     db.refresh(settings_row)
@@ -459,7 +510,7 @@ def update_user_settings(payload: api_schemas.UserSettingsUpdate, user: User = D
 
 
 @app.get("/settings/export")
-def export_user_data(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+def export_user_data(request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
     settings_row = _get_or_create_settings(user, db)
     export = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -479,13 +530,17 @@ def export_user_data(user: User = Depends(get_current_clerk_user), db: Session =
         "agents": [api_schemas.AgentRead.model_validate(item).model_dump(mode="json") for item in db.scalars(select(Agent).where(Agent.user_id == user.id))],
         "daily_plans": [api_schemas.DailyPlanRead.model_validate(item).model_dump(mode="json") for item in db.scalars(select(DailyPlan).where(DailyPlan.user_id == user.id))],
     }
+    _write_audit_log(db, user, "data.exported", "settings", request)
+    db.commit()
     return JSONResponse(content=export, headers={"Content-Disposition": "attachment; filename=humanos-export.json"})
 
 
 @app.delete("/settings/account")
-def delete_local_account(payload: api_schemas.DeleteAccountRequest, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+def delete_local_account(payload: api_schemas.DeleteAccountRequest, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
     if payload.confirmation != "DELETE":
         raise HTTPException(status_code=400, detail="Type DELETE to confirm account deletion")
+    _write_audit_log(db, user, "account.deleted", "settings", request)
+    db.flush()
     db.delete(user)
     db.commit()
     return {"deleted": True}
