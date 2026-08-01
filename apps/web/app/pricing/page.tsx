@@ -97,7 +97,7 @@ const plans: Array<{
   {
     id: "pro",
     name: "Pro",
-    price: "Rs. 249",
+    price: "Rs. 199",
     period: "/month",
     copy: "Launch price for serious personal execution.",
     cta: "Upgrade to Pro",
@@ -107,7 +107,7 @@ const plans: Array<{
   {
     id: "premium",
     name: "Premium",
-    price: "Rs. 299",
+    price: "Rs. 249",
     period: "/month",
     copy: "Launch price for power users and document workflows.",
     cta: "Upgrade to Premium",
