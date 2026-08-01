@@ -57,7 +57,7 @@ const pricing = [
   },
   {
     name: "Pro",
-    price: "Rs. 249",
+    price: "Rs. 299",
     period: "/month",
     copy: "Launch price for students, builders, and focused career growth.",
     featured: true,

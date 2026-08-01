@@ -291,7 +291,7 @@ def admin_analytics(user: User = Depends(get_current_clerk_user), db: Session = 
     last_7_days = now - timedelta(days=7)
     last_30_days = now - timedelta(days=30)
     active_statuses = {"active", "trialing"}
-    plan_prices_inr = {"starter": 149, "pro": 249, "premium": 299, "enterprise": 0}
+    plan_prices_inr = {"starter": 149, "pro": 299, "premium": 299, "enterprise": 0}
 
     subscription_rows = db.execute(select(Subscription.plan, Subscription.status, func.count(Subscription.id)).group_by(Subscription.plan, Subscription.status)).all()
     subscriptions = [

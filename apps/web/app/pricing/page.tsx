@@ -97,7 +97,7 @@ const plans: Array<{
   {
     id: "pro",
     name: "Pro",
-    price: "Rs. 249",
+    price: "Rs. 299",
     period: "/month",
     copy: "Launch price for serious personal execution.",
     cta: "Upgrade to Pro",
