@@ -466,7 +466,7 @@ RAZORPAY_PLAN_ENTERPRISE=
 APP_URL=https://your-vercel-domain.vercel.app
 ```
 
-Create Razorpay plans for Starter Rs. 149/month, Pro Rs. 299/month, and Premium Rs. 299/month. Add a webhook in Razorpay Dashboard pointing to:
+Create Razorpay plans for Starter Rs. 149/month, Pro Rs. 249/month, and Premium Rs. 299/month. Add a webhook in Razorpay Dashboard pointing to:
 
 ```text
 https://your-railway-backend.up.railway.app/billing/razorpay/webhook

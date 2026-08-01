@@ -196,14 +196,21 @@ def _has_razorpay_config() -> bool:
 
 def _razorpay_plan_id(plan: str) -> str:
     settings = get_settings()
-    plan_id = {
+    plan_ids = {
         BillingPlan.starter.value: settings.razorpay_plan_starter,
         BillingPlan.pro.value: settings.razorpay_plan_pro,
         BillingPlan.premium.value: settings.razorpay_plan_premium,
         BillingPlan.enterprise.value: settings.razorpay_plan_enterprise,
-    }.get(plan, "")
+    }
+    plan_id = plan_ids.get(plan, "")
     if not plan_id:
         raise HTTPException(status_code=400, detail="This Razorpay plan is not configured")
+    for other_plan, other_plan_id in plan_ids.items():
+        if other_plan != plan and other_plan_id and other_plan_id == plan_id:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Razorpay {plan} plan is configured with the same plan ID as {other_plan}. Update Railway environment variables.",
+            )
     return plan_id
 
 
