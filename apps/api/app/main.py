@@ -2,6 +2,7 @@ from collections import defaultdict, deque
 from datetime import datetime, time, timedelta, timezone
 from hashlib import sha256
 import secrets
+from urllib.parse import urlencode, urlparse
 import time as time_module
 import json
 import logging
@@ -26,7 +27,7 @@ from app.database import Base, SessionLocal, engine, get_db
 from app.document_copilot import extract_text, generate_document_copilot, upsert_document_embeddings
 from app.memory import auto_save_memories_from_chat, delete_memory_vector, retrieve_relevant_memories, save_memory, upsert_memory_vector
 from app.mcp_server import router as mcp_router
-from app.models import Agent, AgentStatus, AuditLog, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, HumanOSApiKey, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
+from app.models import Agent, AgentStatus, AuditLog, CareerProfile, ConnectedApp, Conversation, DailyPlan, DeveloperApp, Document, DocumentStatus, Goal, GoalMilestone, HumanOSApiKey, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
 from app.schemas import (
     CareerProfileRead,
     CareerProfileUpsert,
@@ -158,6 +159,13 @@ def startup() -> None:
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_humanos_api_keys_user_id ON humanos_api_keys (user_id)"))
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_humanos_api_keys_key_prefix ON humanos_api_keys (key_prefix)"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_humanos_api_keys_key_hash ON humanos_api_keys (key_hash)"))
+            connection.execute(text("CREATE TABLE IF NOT EXISTS developer_apps (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, name VARCHAR(120) NOT NULL, client_id VARCHAR(80) NOT NULL UNIQUE, redirect_url TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_developer_apps_owner_user_id ON developer_apps (owner_user_id)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_developer_apps_client_id ON developer_apps (client_id)"))
+            connection.execute(text("CREATE TABLE IF NOT EXISTS connected_apps (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, developer_app_id UUID NOT NULL REFERENCES developer_apps(id) ON DELETE CASCADE, api_key_id UUID REFERENCES humanos_api_keys(id) ON DELETE SET NULL, status VARCHAR(24) NOT NULL DEFAULT 'active', scopes JSONB NOT NULL DEFAULT '[]'::jsonb, connected_at TIMESTAMPTZ NOT NULL DEFAULT now(), revoked_at TIMESTAMPTZ)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_connected_apps_user_id ON connected_apps (user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_connected_apps_developer_app_id ON connected_apps (developer_app_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_connected_apps_api_key_id ON connected_apps (api_key_id)"))
     except Exception as exc:
         logger.exception("Database startup setup failed; healthcheck remains available: %s", exc)
 
@@ -182,6 +190,30 @@ def _issue_humanos_api_key(name: str) -> tuple[str, str, str, str]:
     secret = secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:42]
     api_key = f"hos_live_{secret}"
     return api_key, _hash_api_key(api_key), "hos_live", api_key[-4:]
+
+
+def _issue_client_id() -> str:
+    return f"hos_app_{secrets.token_urlsafe(18).replace('-', '').replace('_', '')[:24]}"
+
+
+def _validate_redirect_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Redirect URL must be a live https URL")
+    return url
+
+
+def _append_query(url: str, values: dict[str, str]) -> str:
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}{urlencode(values)}"
+
+
+def _serialize_developer_app(app_row: DeveloperApp) -> dict:
+    return {"id": str(app_row.id), "name": app_row.name, "client_id": app_row.client_id, "redirect_url": app_row.redirect_url, "description": app_row.description, "created_at": app_row.created_at}
+
+
+def _serialize_connected_app(connection: ConnectedApp) -> dict:
+    return {"id": str(connection.id), "app_name": connection.developer_app.name, "client_id": connection.developer_app.client_id, "status": connection.status, "scopes": connection.scopes or [], "connected_at": connection.connected_at, "revoked_at": connection.revoked_at}
 
 def _get_or_create_settings(user: User, db: Session) -> UserSettings:
     settings_row = db.scalar(select(UserSettings).where(UserSettings.user_id == user.id))
@@ -488,6 +520,88 @@ def sync_clerk_profile(
         db.rollback()
         logger.exception("Clerk profile sync failed")
         raise HTTPException(status_code=503, detail="Unable to sync user profile") from exc
+
+
+@app.get("/developer/apps", response_model=list[api_schemas.DeveloperAppRead])
+def list_developer_apps(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    apps = db.scalars(select(DeveloperApp).where(DeveloperApp.owner_user_id == user.id).order_by(DeveloperApp.created_at.desc())).all()
+    return [_serialize_developer_app(app_row) for app_row in apps]
+
+
+@app.post("/developer/apps", response_model=api_schemas.DeveloperAppRead)
+def create_developer_app(payload: api_schemas.DeveloperAppCreateRequest, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    redirect_url = _validate_redirect_url(payload.redirect_url.strip())
+    app_row = DeveloperApp(owner_user_id=user.id, name=payload.name.strip(), description=payload.description.strip(), redirect_url=redirect_url, client_id=_issue_client_id())
+    db.add(app_row)
+    db.flush()
+    _write_audit_log(db, user, "developer_app.created", "developer_apps", request, {"name": app_row.name, "client_id": app_row.client_id})
+    db.commit()
+    db.refresh(app_row)
+    return _serialize_developer_app(app_row)
+
+
+@app.get("/connect/app")
+def get_connect_app(client_id: str, redirect_url: str, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    app_row = db.scalar(select(DeveloperApp).where(DeveloperApp.client_id == client_id))
+    if app_row is None:
+        raise HTTPException(status_code=404, detail="Developer app not found")
+    if app_row.redirect_url != redirect_url:
+        raise HTTPException(status_code=400, detail="Redirect URL does not match this app")
+    existing = db.scalar(select(ConnectedApp).where(ConnectedApp.user_id == user.id, ConnectedApp.developer_app_id == app_row.id, ConnectedApp.revoked_at.is_(None)))
+    return {"app": _serialize_developer_app(app_row), "already_connected": existing is not None}
+
+
+@app.post("/connect/approve", response_model=api_schemas.ConnectApproveResponse)
+def approve_connect_app(payload: api_schemas.ConnectApproveRequest, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    redirect_url = _validate_redirect_url(payload.redirect_url.strip())
+    app_row = db.scalar(select(DeveloperApp).where(DeveloperApp.client_id == payload.client_id))
+    if app_row is None:
+        raise HTTPException(status_code=404, detail="Developer app not found")
+    if app_row.redirect_url != redirect_url:
+        raise HTTPException(status_code=400, detail="Redirect URL does not match this app")
+
+    existing = db.scalar(select(ConnectedApp).where(ConnectedApp.user_id == user.id, ConnectedApp.developer_app_id == app_row.id, ConnectedApp.revoked_at.is_(None)))
+    if existing and existing.api_key_id:
+        old_key = db.scalar(select(HumanOSApiKey).where(HumanOSApiKey.id == existing.api_key_id))
+        if old_key is not None and old_key.revoked_at is None:
+            old_key.revoked_at = datetime.now(timezone.utc)
+
+    raw_key, key_hash, key_prefix, key_last4 = _issue_humanos_api_key(f"{app_row.name} connection")
+    api_key = HumanOSApiKey(user_id=user.id, name=f"{app_row.name} connection", key_hash=key_hash, key_prefix=key_prefix, key_last4=key_last4, scopes=["mcp:tools"])
+    db.add(api_key)
+    db.flush()
+
+    connection = existing or ConnectedApp(user_id=user.id, developer_app_id=app_row.id, scopes=["mcp:tools"])
+    connection.api_key_id = api_key.id
+    connection.status = "active"
+    connection.revoked_at = None
+    db.add(connection)
+    _write_audit_log(db, user, "connected_app.approved", "connected_apps", request, {"client_id": app_row.client_id, "app": app_row.name})
+    db.commit()
+    callback = _append_query(redirect_url, {"humanos_api_key": raw_key, "client_id": app_row.client_id, "state": payload.state})
+    return {"redirect_url": callback, "api_key": raw_key}
+
+
+@app.get("/connected-apps", response_model=list[api_schemas.ConnectedAppRead])
+def list_connected_apps(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    connections = db.scalars(select(ConnectedApp).where(ConnectedApp.user_id == user.id).order_by(ConnectedApp.connected_at.desc())).all()
+    return [_serialize_connected_app(connection) for connection in connections]
+
+
+@app.delete("/connected-apps/{connection_id}")
+def revoke_connected_app(connection_id: UUID, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
+    connection = db.scalar(select(ConnectedApp).where(ConnectedApp.id == connection_id, ConnectedApp.user_id == user.id))
+    if connection is None:
+        raise HTTPException(status_code=404, detail="Connected app not found")
+    connection.status = "revoked"
+    connection.revoked_at = datetime.now(timezone.utc)
+    if connection.api_key_id:
+        api_key = db.scalar(select(HumanOSApiKey).where(HumanOSApiKey.id == connection.api_key_id))
+        if api_key is not None and api_key.revoked_at is None:
+            api_key.revoked_at = connection.revoked_at
+    _write_audit_log(db, user, "connected_app.revoked", "connected_apps", request, {"connection_id": str(connection.id)})
+    db.commit()
+    return {"revoked": True}
 
 
 @app.get("/api-keys", response_model=list[api_schemas.ApiKeyRead])

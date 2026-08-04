@@ -86,6 +86,45 @@ class ApiKeyCreateResponse(BaseModel):
     key: ApiKeyRead
 
 
+
+class DeveloperAppCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    redirect_url: str = Field(min_length=8, max_length=1000)
+    description: str = Field(default="", max_length=1000)
+
+
+class DeveloperAppRead(BaseModel):
+    id: UUID
+    name: str
+    client_id: str
+    redirect_url: str
+    description: str = ""
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ConnectApproveRequest(BaseModel):
+    client_id: str = Field(min_length=8, max_length=120)
+    redirect_url: str = Field(min_length=8, max_length=1000)
+    state: str = Field(default="", max_length=500)
+
+
+class ConnectApproveResponse(BaseModel):
+    redirect_url: str
+    api_key: str
+
+
+class ConnectedAppRead(BaseModel):
+    id: UUID
+    app_name: str
+    client_id: str
+    status: str
+    scopes: list[str] = Field(default_factory=list)
+    connected_at: datetime
+    revoked_at: datetime | None = None
+
+
 class DeleteAccountRequest(BaseModel):
     confirmation: str
 
