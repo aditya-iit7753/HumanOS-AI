@@ -62,6 +62,7 @@ CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=humanos_memories
 QDRANT_DOCUMENT_COLLECTION=humanos_documents
+MCP_API_KEY=change-this-long-random-integration-key
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRICE_PRO=price_...
@@ -210,6 +211,75 @@ customer.subscription.deleted
 - Qdrant stores memory vectors and document chunk embeddings.
 - If `OPENAI_API_KEY` is not configured, backend AI helpers return deterministic local fallback responses so the UI remains testable.
 
+## MCP Server
+
+HumanOS AI exposes a protected MCP-style HTTP JSON-RPC gateway so other apps, websites, automations, or buyer systems can connect to HumanOS tools.
+
+Set this backend environment variable on Railway:
+
+```bash
+MCP_API_KEY=use-a-long-random-secret
+```
+
+Endpoint:
+
+```text
+POST https://your-railway-backend.up.railway.app/mcp
+```
+
+Send either header:
+
+```text
+x-mcp-api-key: use-a-long-random-secret
+```
+
+or:
+
+```text
+Authorization: Bearer use-a-long-random-secret
+```
+
+List available tools:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+Create a task from another app:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "humanos_create_task",
+    "arguments": {
+      "email": "user@example.com",
+      "title": "Prepare AI resume",
+      "priority": "high"
+    }
+  }
+}
+```
+
+Included MCP tools:
+
+- `humanos_health`
+- `humanos_chat`
+- `humanos_list_tasks`
+- `humanos_create_task`
+- `humanos_list_memories`
+- `humanos_save_memory`
+- `humanos_create_goal`
+
+Keep `MCP_API_KEY` private. Rotate it if you share access with a buyer, integration partner, or contractor.
+
 ## Deployment
 
 HumanOS AI is split into deployable services:
@@ -295,6 +365,7 @@ CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.jso
 CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
 CLERK_JWT_AUDIENCE=
 ADMIN_EMAILS=assaditya.iit@gmail.com
+MCP_API_KEY=use-a-long-random-secret
 QDRANT_URL=https://your-qdrant-endpoint
 QDRANT_API_KEY=your-qdrant-api-key-if-required
 QDRANT_COLLECTION=humanos_memories
@@ -417,6 +488,7 @@ Backend variables:
 | `CLERK_ISSUER` | Yes | Clerk issuer URL. |
 | `CLERK_JWT_AUDIENCE` | No | Only set if your Clerk JWT template uses an audience. |
 | `ADMIN_EMAILS` | Recommended | Comma-separated owner emails allowed to open `/admin`. |
+| `MCP_API_KEY` | Optional, required for MCP | Long random secret used by external apps to call `/mcp`. |
 | `QDRANT_URL` | Yes | Qdrant Cloud or Railway Qdrant URL. |
 | `QDRANT_API_KEY` | No | Required for Qdrant Cloud/private Qdrant. |
 | `QDRANT_COLLECTION` | Yes | Memory vector collection name. |
