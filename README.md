@@ -213,9 +213,9 @@ customer.subscription.deleted
 
 ## MCP Server
 
-HumanOS AI exposes a protected MCP-style HTTP JSON-RPC gateway so other apps, websites, automations, or buyer systems can connect to HumanOS tools.
+HumanOS AI exposes a protected MCP-style HTTP JSON-RPC gateway so other apps, websites, automations, or buyer systems can connect to HumanOS tools. Logged-in users can open `/api`, generate their own `hos_live_...` API key, and use it from their projects. The raw key is shown once and only a hash is stored in PostgreSQL.
 
-Set this backend environment variable on Railway:
+Site owners can also set this optional backend environment variable on Railway for owner-level integration access:
 
 ```bash
 MCP_API_KEY=use-a-long-random-secret
@@ -278,7 +278,7 @@ Included MCP tools:
 - `humanos_save_memory`
 - `humanos_create_goal`
 
-Keep `MCP_API_KEY` private. Rotate it if you share access with a buyer, integration partner, or contractor.
+Keep owner `MCP_API_KEY` private. For normal users, share the `/api` page instead so each user can generate and revoke their own key.
 
 ## Deployment
 

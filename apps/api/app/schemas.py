@@ -63,6 +63,29 @@ class UserSettingsRead(BaseModel):
     updated_at: datetime
 
 
+
+class ApiKeyCreateRequest(BaseModel):
+    name: str = Field(default="Default key", min_length=1, max_length=120)
+
+
+class ApiKeyRead(BaseModel):
+    id: UUID
+    name: str
+    masked_key: str
+    key_prefix: str
+    scopes: list[str] = Field(default_factory=list)
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ApiKeyCreateResponse(BaseModel):
+    api_key: str
+    key: ApiKeyRead
+
+
 class DeleteAccountRequest(BaseModel):
     confirmation: str
 
