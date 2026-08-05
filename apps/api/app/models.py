@@ -94,8 +94,6 @@ class User(Base):
     subscription: Mapped["Subscription | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     api_keys: Mapped[list["HumanOSApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    developer_apps: Mapped[list["DeveloperApp"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
-    app_connections: Mapped[list["ConnectedApp"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Subscription(Base):
@@ -160,37 +158,6 @@ class HumanOSApiKey(Base):
     @property
     def masked_key(self) -> str:
         return f"{self.key_prefix}...{self.key_last4}"
-
-
-class DeveloperApp(Base):
-    __tablename__ = "developer_apps"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(120))
-    client_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    redirect_url: Mapped[str] = mapped_column(Text)
-    description: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    owner: Mapped[User] = relationship(back_populates="developer_apps")
-    connections: Mapped[list["ConnectedApp"]] = relationship(back_populates="developer_app", cascade="all, delete-orphan")
-
-
-class ConnectedApp(Base):
-    __tablename__ = "connected_apps"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    developer_app_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("developer_apps.id", ondelete="CASCADE"), index=True)
-    api_key_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("humanos_api_keys.id", ondelete="SET NULL"), nullable=True, index=True)
-    status: Mapped[str] = mapped_column(String(24), default="active")
-    scopes: Mapped[list] = mapped_column(JSONB, default=list)
-    connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    user: Mapped[User] = relationship(back_populates="app_connections")
-    developer_app: Mapped[DeveloperApp] = relationship(back_populates="connections")
 
 
 class AuditLog(Base):

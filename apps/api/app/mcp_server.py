@@ -41,7 +41,7 @@ def _authorize_mcp(request: Request, db: Session) -> User | None:
             db.flush()
             return api_key.user
 
-    if not provided and not settings.mcp_api_key:
+    if not settings.mcp_api_key:
         raise HTTPException(status_code=503, detail="MCP server is not configured")
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MCP API key")
 

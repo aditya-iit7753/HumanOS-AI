@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { SafeUserButton, useSafeAuth } from "@/components/clerk-safe";
 import { useTheme } from "next-themes";
-import { Check, CheckCircle2, ChevronLeft, Code2, Copy, KeyRound, Loader2, Moon, Plus, ShieldCheck, Sun, Terminal, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Code2, Copy, KeyRound, Loader2, Moon, Plus, ShieldCheck, Sun, Terminal, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,6 @@ type HumanOSApiKey = {
 };
 
 type CreateKeyResponse = { api_key: string; key: HumanOSApiKey };
-type DeveloperApp = { id: string; name: string; client_id: string; redirect_url: string; description: string; created_at: string };
-type ConnectedApp = { id: string; app_name: string; client_id: string; status: string; scopes: string[]; connected_at: string; revoked_at?: string | null };
 
 export function ApiClient({ user, clerkReady }: { user: ApiUser; clerkReady: boolean }) {
   if (!clerkReady) return <ApiPreview user={user} />;
@@ -38,17 +36,11 @@ function AuthenticatedApiClient({ user }: { user: ApiUser }) {
   const { getToken } = useSafeAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [keys, setKeys] = useState<HumanOSApiKey[]>([]);
-  const [developerApps, setDeveloperApps] = useState<DeveloperApp[]>([]);
-  const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
   const [name, setName] = useState("My project key");
-  const [appName, setAppName] = useState("My HumanOS integration");
-  const [redirectUrl, setRedirectUrl] = useState("https://yourapp.com/api/humanos/callback");
-  const [appDescription, setAppDescription] = useState("");
   const [newKey, setNewKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [isCreatingApp, setIsCreatingApp] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -72,10 +64,6 @@ function AuthenticatedApiClient({ user }: { user: ApiUser }) {
       const response = await fetch(`${API_URL}/api-keys`, { headers });
       if (!response.ok) throw new Error(await response.text());
       setKeys((await response.json()) as HumanOSApiKey[]);
-      const appsResponse = await fetch(`${API_URL}/developer/apps`, { headers });
-      if (appsResponse.ok) setDeveloperApps((await appsResponse.json()) as DeveloperApp[]);
-      const connectedResponse = await fetch(`${API_URL}/connected-apps`, { headers });
-      if (connectedResponse.ok) setConnectedApps((await connectedResponse.json()) as ConnectedApp[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load API keys");
     } finally {
@@ -127,31 +115,6 @@ function AuthenticatedApiClient({ user }: { user: ApiUser }) {
     }
   }
 
-
-  async function createDeveloperApp(event: FormEvent) {
-    event.preventDefault();
-    setIsCreatingApp(true);
-    setError("");
-    setStatus("");
-    try {
-      const headers = await authHeaders();
-      const response = await fetch(`${API_URL}/developer/apps`, { method: "POST", headers, body: JSON.stringify({ name: appName, redirect_url: redirectUrl, description: appDescription }) });
-      if (!response.ok) throw new Error(await response.text());
-      const data = (await response.json()) as DeveloperApp;
-      setDeveloperApps((current) => [data, ...current]);
-      setStatus("Developer app created. Share its Connect URL with users.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create developer app");
-    } finally {
-      setIsCreatingApp(false);
-    }
-  }
-
-  function connectUrl(app: DeveloperApp) {
-    const base = typeof window !== "undefined" ? window.location.origin : "https://www.humanosai.in";
-    return `${base}/connect?client_id=${encodeURIComponent(app.client_id)}&redirect_url=${encodeURIComponent(app.redirect_url)}`;
-  }
-
   const mcpUrl = `${API_URL}/mcp`;
   const sampleKey = newKey || "hos_live_your_api_key";
 
@@ -190,48 +153,6 @@ function AuthenticatedApiClient({ user }: { user: ApiUser }) {
             </CardContent>
           </Card>
 
-
-          <Card className="bg-card/70 backdrop-blur-2xl">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-primary" /> One-click app connect</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <form onSubmit={createDeveloperApp} className="space-y-3">
-                <Input value={appName} onChange={(event) => setAppName(event.target.value)} placeholder="App name" />
-                <Input value={redirectUrl} onChange={(event) => setRedirectUrl(event.target.value)} placeholder="https://yourapp.com/api/humanos/callback" />
-                <Input value={appDescription} onChange={(event) => setAppDescription(event.target.value)} placeholder="Short description shown before approval" />
-                <Button disabled={isCreatingApp} className="w-full justify-between">
-                  {isCreatingApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Register app
-                </Button>
-              </form>
-              {!developerApps.length && <p className="rounded-lg border bg-background/65 p-4 text-sm text-muted-foreground">Register an app to create a Connect HumanOS URL. Users approve access and your app receives a token automatically.</p>}
-              {developerApps.map((app) => {
-                const url = connectUrl(app);
-                return (
-                  <div key={app.id} className="rounded-lg border bg-background/65 p-4">
-                    <p className="text-sm font-semibold">{app.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Client ID: {app.client_id}</p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">Callback: {app.redirect_url}</p>
-                    <div className="mt-3 flex gap-2">
-                      <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">{url}</code>
-                      <Button type="button" variant="outline" size="icon" title="Copy connect URL" onClick={() => void copyKey(url)}><Copy className="h-4 w-4" /></Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/70 backdrop-blur-2xl">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="h-5 w-5 text-secondary" /> Connected apps</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {!connectedApps.length && <p className="rounded-lg border bg-background/65 p-4 text-sm text-muted-foreground">No external apps connected yet.</p>}
-              {connectedApps.map((connection) => (
-                <div key={connection.id} className="rounded-lg border bg-background/65 p-4">
-                  <p className="text-sm font-semibold">{connection.app_name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{connection.status} ? {new Date(connection.connected_at).toLocaleString()}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
           <Card className="bg-card/70 backdrop-blur-2xl">
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-secondary" /> Your keys</CardTitle></CardHeader>
             <CardContent className="space-y-3">
