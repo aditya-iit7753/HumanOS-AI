@@ -13,26 +13,22 @@ export const metadata: Metadata = {
   title: "HumanOS AI",
   description: "AI life and career copilot",
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/favicon.svg",
-    apple: "/logo.svg",
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
   },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <AppAuthProvider>
+    <AppAuthProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className={inter.className}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AuthSync />
             {children}
           </ThemeProvider>
-        </AppAuthProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </AppAuthProvider>
   );
 }
