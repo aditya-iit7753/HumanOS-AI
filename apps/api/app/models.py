@@ -93,7 +93,6 @@ class User(Base):
     settings: Mapped["UserSettings | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
     subscription: Mapped["Subscription | None"] = relationship(back_populates="user", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    api_keys: Mapped[list["HumanOSApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Subscription(Base):
@@ -137,27 +136,6 @@ class UserSettings(Base):
 
     user: Mapped[User] = relationship(back_populates="settings")
 
-
-
-class HumanOSApiKey(Base):
-    __tablename__ = "humanos_api_keys"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(120), default="Default key")
-    key_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
-    key_prefix: Mapped[str] = mapped_column(String(16), index=True)
-    key_last4: Mapped[str] = mapped_column(String(4), default="")
-    scopes: Mapped[list] = mapped_column(JSONB, default=list)
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    user: Mapped[User] = relationship(back_populates="api_keys")
-
-    @property
-    def masked_key(self) -> str:
-        return f"{self.key_prefix}...{self.key_last4}"
 
 
 class AuditLog(Base):

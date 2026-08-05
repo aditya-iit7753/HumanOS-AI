@@ -1,7 +1,7 @@
 from collections import defaultdict, deque
+from collections import defaultdict, deque
 from datetime import datetime, time, timedelta, timezone
-from hashlib import sha256
-import secrets
+import time as time_module
 import time as time_module
 import json
 import logging
@@ -26,7 +26,7 @@ from app.database import Base, SessionLocal, engine, get_db
 from app.document_copilot import extract_text, generate_document_copilot, upsert_document_embeddings
 from app.memory import auto_save_memories_from_chat, delete_memory_vector, retrieve_relevant_memories, save_memory, upsert_memory_vector
 from app.mcp_server import router as mcp_router
-from app.models import Agent, AgentStatus, AuditLog, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, HumanOSApiKey, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
+from app.models import Agent, AgentStatus, AuditLog, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
 from app.schemas import (
     CareerProfileRead,
     CareerProfileUpsert,
@@ -154,34 +154,8 @@ def startup() -> None:
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs (user_id)"))
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_action ON audit_logs (action)"))
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs (created_at)"))
-            connection.execute(text("CREATE TABLE IF NOT EXISTS humanos_api_keys (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, name VARCHAR(120) NOT NULL DEFAULT 'Default key', key_hash VARCHAR(128) NOT NULL UNIQUE, key_prefix VARCHAR(16) NOT NULL, key_last4 VARCHAR(4) NOT NULL DEFAULT '', scopes JSONB NOT NULL DEFAULT '[]'::jsonb, last_used_at TIMESTAMPTZ, revoked_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())"))
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_humanos_api_keys_user_id ON humanos_api_keys (user_id)"))
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_humanos_api_keys_key_prefix ON humanos_api_keys (key_prefix)"))
-            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_humanos_api_keys_key_hash ON humanos_api_keys (key_hash)"))
     except Exception as exc:
         logger.exception("Database startup setup failed; healthcheck remains available: %s", exc)
-
-def _hash_api_key(api_key: str) -> str:
-    return sha256(api_key.encode("utf-8")).hexdigest()
-
-
-def _serialize_api_key(api_key: HumanOSApiKey) -> dict:
-    return {
-        "id": str(api_key.id),
-        "name": api_key.name,
-        "masked_key": api_key.masked_key,
-        "key_prefix": api_key.key_prefix,
-        "scopes": api_key.scopes or [],
-        "last_used_at": api_key.last_used_at,
-        "revoked_at": api_key.revoked_at,
-        "created_at": api_key.created_at,
-    }
-
-
-def _issue_humanos_api_key(name: str) -> tuple[str, str, str, str]:
-    secret = secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:42]
-    api_key = f"hos_live_{secret}"
-    return api_key, _hash_api_key(api_key), "hos_live", api_key[-4:]
 
 def _get_or_create_settings(user: User, db: Session) -> UserSettings:
     settings_row = db.scalar(select(UserSettings).where(UserSettings.user_id == user.id))
@@ -488,39 +462,6 @@ def sync_clerk_profile(
         db.rollback()
         logger.exception("Clerk profile sync failed")
         raise HTTPException(status_code=503, detail="Unable to sync user profile") from exc
-
-
-@app.get("/api-keys", response_model=list[api_schemas.ApiKeyRead])
-def list_api_keys(user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    keys = db.scalars(select(HumanOSApiKey).where(HumanOSApiKey.user_id == user.id).order_by(HumanOSApiKey.created_at.desc())).all()
-    return [_serialize_api_key(api_key) for api_key in keys]
-
-
-@app.post("/api-keys", response_model=api_schemas.ApiKeyCreateResponse)
-def create_api_key(payload: api_schemas.ApiKeyCreateRequest, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    active_count = int(db.scalar(select(func.count(HumanOSApiKey.id)).where(HumanOSApiKey.user_id == user.id, HumanOSApiKey.revoked_at.is_(None))) or 0)
-    if active_count >= 5:
-        raise HTTPException(status_code=400, detail="You can keep up to 5 active API keys. Revoke an old key first.")
-    raw_key, key_hash, key_prefix, key_last4 = _issue_humanos_api_key(payload.name)
-    api_key = HumanOSApiKey(user_id=user.id, name=payload.name.strip() or "Default key", key_hash=key_hash, key_prefix=key_prefix, key_last4=key_last4, scopes=["mcp:tools"])
-    db.add(api_key)
-    db.flush()
-    _write_audit_log(db, user, "api_key.created", "api_keys", request, {"name": api_key.name, "key_prefix": api_key.key_prefix})
-    db.commit()
-    db.refresh(api_key)
-    return {"api_key": raw_key, "key": _serialize_api_key(api_key)}
-
-
-@app.delete("/api-keys/{api_key_id}")
-def revoke_api_key(api_key_id: UUID, request: Request, user: User = Depends(get_current_clerk_user), db: Session = Depends(get_db)):
-    api_key = db.scalar(select(HumanOSApiKey).where(HumanOSApiKey.id == api_key_id, HumanOSApiKey.user_id == user.id))
-    if api_key is None:
-        raise HTTPException(status_code=404, detail="API key not found")
-    if api_key.revoked_at is None:
-        api_key.revoked_at = datetime.now(timezone.utc)
-        _write_audit_log(db, user, "api_key.revoked", "api_keys", request, {"name": api_key.name})
-    db.commit()
-    return {"revoked": True}
 
 
 @app.get("/settings", response_model=api_schemas.UserSettingsRead)

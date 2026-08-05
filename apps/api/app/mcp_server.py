@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from hashlib import sha256
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,39 +9,20 @@ from sqlalchemy.orm import Session
 from app.ai import build_context, generate_answer
 from app.config import get_settings
 from app.database import get_db
-from app.models import Conversation, Goal, HumanOSApiKey, Memory, Message, Task, TaskPriority, User
+from app.models import Conversation, Goal, Memory, Message, Task, TaskPriority, User
 
 router = APIRouter(tags=["mcp"])
 
 
-def _extract_key(request: Request) -> str:
-    authorization = request.headers.get("authorization", "")
-    scheme, _, bearer_token = authorization.partition(" ")
-    return request.headers.get("x-mcp-api-key") or (bearer_token if scheme.lower() == "bearer" else "")
-
-
-def _hash_api_key(api_key: str) -> str:
-    return sha256(api_key.encode("utf-8")).hexdigest()
-
-
-def _authorize_mcp(request: Request, db: Session) -> User | None:
-    provided = _extract_key(request)
+def _authorize_mcp(request: Request) -> None:
     settings = get_settings()
-
-    if settings.mcp_api_key and provided == settings.mcp_api_key:
-        return None
-
-    if provided.startswith("hos_"):
-        key_hash = _hash_api_key(provided)
-        api_key = db.scalar(select(HumanOSApiKey).where(HumanOSApiKey.key_hash == key_hash, HumanOSApiKey.revoked_at.is_(None)))
-        if api_key is not None:
-            api_key.last_used_at = datetime.now(timezone.utc)
-            db.flush()
-            return api_key.user
-
     if not settings.mcp_api_key:
         raise HTTPException(status_code=503, detail="MCP server is not configured")
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MCP API key")
+    authorization = request.headers.get("authorization", "")
+    scheme, _, bearer_token = authorization.partition(" ")
+    provided = request.headers.get("x-mcp-api-key") or (bearer_token if scheme.lower() == "bearer" else "")
+    if provided != settings.mcp_api_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MCP API key")
 
 
 def _jsonrpc_result(request_id: Any, result: dict[str, Any]) -> dict[str, Any]:
@@ -58,9 +37,7 @@ def _content(text: str) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": text}]}
 
 
-def _get_or_create_user(db: Session, arguments: dict[str, Any], authenticated_user: User | None = None) -> User:
-    if authenticated_user is not None:
-        return authenticated_user
+def _get_or_create_user(db: Session, arguments: dict[str, Any]) -> User:
     email = str(arguments.get("email") or "").strip().lower()
     if not email:
         raise HTTPException(status_code=400, detail="Tool argument 'email' is required")
@@ -120,11 +97,11 @@ def _tool_schema() -> list[dict[str, Any]]:
     ]
 
 
-def _call_tool(name: str, arguments: dict[str, Any], db: Session, authenticated_user: User | None = None) -> dict[str, Any]:
+def _call_tool(name: str, arguments: dict[str, Any], db: Session) -> dict[str, Any]:
     if name == "humanos_health":
         return _content("HumanOS MCP server is online.")
 
-    user = _get_or_create_user(db, arguments, authenticated_user)
+    user = _get_or_create_user(db, arguments)
 
     if name == "humanos_list_tasks":
         tasks = db.scalars(select(Task).where(Task.user_id == user.id).order_by(Task.created_at.desc()).limit(20)).all()
@@ -183,14 +160,14 @@ def _call_tool(name: str, arguments: dict[str, Any], db: Session, authenticated_
 
 
 @router.get("/mcp")
-def mcp_info(request: Request, db: Session = Depends(get_db)) -> dict[str, Any]:
-    _authorize_mcp(request, db)
+def mcp_info(request: Request) -> dict[str, Any]:
+    _authorize_mcp(request)
     return {"name": "HumanOS AI MCP", "endpoint": "/mcp", "transport": "http-jsonrpc", "tools": [tool["name"] for tool in _tool_schema()]}
 
 
 @router.post("/mcp")
 async def mcp_jsonrpc(payload: dict[str, Any], request: Request, db: Session = Depends(get_db)) -> dict[str, Any]:
-    authenticated_user = _authorize_mcp(request, db)
+    _authorize_mcp(request)
     request_id = payload.get("id")
     method = str(payload.get("method") or "")
     params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
@@ -203,7 +180,7 @@ async def mcp_jsonrpc(payload: dict[str, Any], request: Request, db: Session = D
         if method == "tools/call":
             name = str(params.get("name") or "")
             arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
-            return _jsonrpc_result(request_id, _call_tool(name, arguments, db, authenticated_user))
+            return _jsonrpc_result(request_id, _call_tool(name, arguments, db))
         return _jsonrpc_error(request_id, -32601, f"Unknown MCP method: {method}")
     except HTTPException as exc:
         return _jsonrpc_error(request_id, -32000, str(exc.detail))
