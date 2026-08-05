@@ -36,7 +36,6 @@ class Settings(BaseSettings):
     razorpay_plan_premium: str = ""
     razorpay_plan_enterprise: str = ""
     admin_emails: str = ""
-    mcp_api_key: str = ""
     rate_limit_per_minute: int = 120
     auth_rate_limit_per_minute: int = 20
     max_request_bytes: int = 10 * 1024 * 1024
