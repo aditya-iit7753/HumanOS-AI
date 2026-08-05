@@ -25,6 +25,7 @@ from app.config import get_settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.document_copilot import extract_text, generate_document_copilot, upsert_document_embeddings
 from app.memory import auto_save_memories_from_chat, delete_memory_vector, retrieve_relevant_memories, save_memory, upsert_memory_vector
+from app.mcp_server import router as mcp_router
 from app.models import Agent, AgentStatus, AuditLog, CareerProfile, Conversation, DailyPlan, Document, DocumentStatus, Goal, GoalMilestone, Memory, Message, Subscription, Task, TaskPriority, TaskStatus, User, UserSettings
 from app.schemas import (
     CareerProfileRead,
@@ -110,6 +111,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(mcp_router)
 
 
 @app.exception_handler(Exception)
