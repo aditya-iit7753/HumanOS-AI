@@ -13,7 +13,6 @@ const csp = [
   "font-src 'self' data:",
   "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.humanosai.in https://accounts.humanosai.in https://api.razorpay.com https://checkout.razorpay.com https://*.up.railway.app",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.clerk.accounts.dev https://*.clerk.com https://clerk.humanosai.in https://accounts.humanosai.in https://challenges.cloudflare.com",
-  "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
