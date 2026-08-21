@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { AppAuthProvider } from "@/components/app-auth-provider";
 import { AuthSync } from "@/components/auth-sync";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <AuthSync />
             {children}
           </ThemeProvider>
+          <Analytics />
         </body>
       </html>
     </AppAuthProvider>
